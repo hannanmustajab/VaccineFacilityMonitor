@@ -56,7 +56,7 @@ bool waiting = false;
 bool dataInFlight = true;
 const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
 byte controlRegister;                                                                       // Stores the control register values
-bool verboseMode;                                                                           // Enables more active communications for configutation and setup
+bool verboseMode=true;                                                                           // Enables more active communications for configutation and setup
 
 // Variables related to alerting on temperature thresholds. 
 
