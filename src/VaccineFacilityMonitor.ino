@@ -10,7 +10,7 @@
 // v0.10 - Initial Release - BME680 functionality
 // v1.00 - Added Temperature sensing and threshold logic.
 // v1.01 - Fixed Zero temperature check. 
-// v1.02 - Added epoch timestamp to fix error with aws quicksights. 
+// v1.02 - Fixed epoch timestamp to fix error with aws quicksights. 
 
 /* 
   Todo : 
@@ -178,7 +178,7 @@ void loop()
     else if ((upperTemperatureThresholdCrossed \
     || lowerTemperatureThresholdCrossed \
     || upperHumidityThresholdCrossed \
-    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 10))                 // Send threshold message after every 10 minutes.
+    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 5))                 // Send threshold message after every 10 minutes.
     {
      
       state = THRESHOLD_CROSSED;
@@ -256,7 +256,7 @@ void sendEvent()
 {
   char data[256];                     
   t = Time.now(); //Unix Format                                                      // Store the date in this character array - not global
-  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f, \"project_name\":%s, \"timestamp\":%ld}", temperatureInC, relativeHumidity, pressureHpa,"cold-chain",t);
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", temperatureInC, relativeHumidity, pressureHpa);
   Particle.publish("storage-facility-hook", data, PRIVATE);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
   currentDailyPeriod = Time.day();

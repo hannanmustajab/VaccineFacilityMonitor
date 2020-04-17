@@ -1,0 +1,18 @@
+{
+    "event": "storage-facility-hook",
+    "responseTopic": "{{{PARTICLE_DEVICE_ID}}}_storage-facility-hook",
+    "url": "ADD_YOUR_API_ENDPOINT_HERE",
+    "requestType": "PUT",
+    "noDefaults": true,
+    "rejectUnauthorized": true,
+    "json": {
+        "Data": {
+            "humidity": "{{Humidity}}",
+            "temperature": "{{Temperature}}",
+            "device": "{{PARTICLE_DEVICE_ID}}",
+            "timestamp": "{{PARTICLE_PUBLISHED_AT}}",
+            "project": "coldChain"
+        },
+        "PartitionKey": 1
+    }
+}
