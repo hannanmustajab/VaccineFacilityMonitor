@@ -7,7 +7,7 @@
 /*
 * Project : Temperature And Humidity Sensor for Vaccine Facility. 
 * Description: Cellular Connected Data Logger.
-* Author: Chip McClelland chip@mcclellands.org, Abdul Hannan Mustajab
+* Author: Abdul Hannan Mustajab
 
 * Sponsor: Thom Harvey ID&D
 * Date: 16 April 2020
@@ -15,6 +15,8 @@
 
 // v0.10 - Initial Release - BME680 functionality
 // v1.00 - Added Temperature sensing and threshold logic.
+// v1.01 - Fixed Zero temperature check. 
+// v1.02 - Added epoch timestamp to fix error with aws quicksights. 
 
 
 void setup();
@@ -35,8 +37,8 @@ int setUpperTempLimit(String value);
 int setLowerTempLimit(String value);
 int setUpperHumidityLimit(String value);
 int setLowerHumidityLimit(String value);
-#line 14 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
-#define SOFTWARERELEASENUMBER "1.00"                                                        // Keep track of release numbers
+#line 16 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
+#define SOFTWARERELEASENUMBER "1.01"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "Adafruit_BME680.h"
@@ -45,7 +47,6 @@ int setLowerHumidityLimit(String value);
 
 
 #define SEALEVELPRESSURE_HPA (1013.25)                                                     // Universal variables
-#define MEMORYMAPVERSION 1                                                                 // Lets us know if we need to reinitialize the memory map
 
 Adafruit_BME680 bme;                                                                       // Instantiate the I2C library
 
@@ -53,7 +54,6 @@ Adafruit_BME680 bme;                                                            
 SYSTEM_MODE(SEMI_AUTOMATIC);                                                               // This will enable user code to start executing automatically.
 SYSTEM_THREAD(ENABLED);                                                                    // Means my code will not be held up by Particle processes.
 STARTUP(System.enableFeature(FEATURE_RESET_INFO));
-FuelGauge batteryMonitor;                                                                  // Prototype for the fuel gauge (included in Particle core library)
 
 // State Machine Variables
 enum State { INITIALIZATION_STATE, ERROR_STATE, IDLE_STATE, MEASURING_STATE,THRESHOLD_CROSSED, REPORTING_STATE, RESP_WAIT_STATE};
@@ -67,6 +67,7 @@ const int tempLED     =   D5;
 
 // Timing Variables
 
+int publishInterval;                                                                        // Publish interval for sending data. 
 const unsigned long webhookWait = 45000;                                                    // How long will we wair for a WebHook response
 const unsigned long resetWait = 300000;                                                     // How long will we wait in ERROR_STATE until reset
 const int publishFrequency = 1000;                                                          // We can only publish once a second
@@ -74,6 +75,7 @@ unsigned long webhookTimeStamp = 0;                                             
 unsigned long resetTimeStamp = 0;                                                           // Resets - this keeps you from falling into a reset loop
 unsigned long lastPublish = 0;                                                              // Can only publish 1/sec on avg and 4/sec burst
 int sampleRate;                                                                             // Sample rate for idle state.
+time_t t;                                                                                    // Global time vairable
 
 // Program Variables
 int resetCount;                                                                             // Counts the number of times the Electron has had a pin reset
@@ -83,7 +85,7 @@ bool waiting = false;
 bool dataInFlight = true;
 const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
 byte controlRegister;                                                                       // Stores the control register values
-bool verboseMode;                                                                           // Enables more active communications for configutation and setup
+bool verboseMode=true;                                                                           // Enables more active communications for configutation and setup
 
 // Variables related to alerting on temperature thresholds. 
 
@@ -96,7 +98,7 @@ float upperTemperatureThreshold = 30;
 float lowerTemperatureThreshold = 2;
 float upperHumidityThreshold = 90;
 float lowerHumidityThreshold = 60;
-char smsString[64];
+char smsString[256];
 
 
 
@@ -186,7 +188,7 @@ void loop()
     static int TimePassed = 0;
     if (verboseMode && state != oldState) publishStateTransition();
    
-    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 10 ) {
+    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 3) {
       TimePassed = Time.minute();
       state = MEASURING_STATE;                                                     
       }
@@ -196,6 +198,7 @@ void loop()
     || upperHumidityThresholdCrossed \
     || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 10))                 // Send threshold message after every 10 minutes.
     {
+     
       state = THRESHOLD_CROSSED;
     }
     break;
@@ -227,6 +230,7 @@ void loop()
     else state = REPORTING_STATE;
     break;
 
+  case REPORTING_STATE:
     if (verboseMode && state != oldState) publishStateTransition();                         // Reporting - hourly or on command
     if (Particle.connected()) {
       if (Time.hour() == 12) Particle.syncTime();                                           // Set the clock each day at noon
@@ -268,8 +272,9 @@ void loop()
 
 void sendEvent()
 {
-  char data[256];                                                                           // Store the date in this character array - not global
-  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", temperatureInC, relativeHumidity, pressureHpa);
+  char data[256];                     
+  t = Time.now(); //Unix Format                                                      // Store the date in this character array - not global
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f, \"project_name\":%s, \"timestamp\":%ld}", temperatureInC, relativeHumidity, pressureHpa,"cold-chain",t);
   Particle.publish("storage-facility-hook", data, PRIVATE);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
   currentDailyPeriod = Time.day();
@@ -299,31 +304,38 @@ void UbidotsHandler(const char *event, const char *data)                        
 
 bool takeMeasurements() {
 
-  bme.setGasHeater(320, 150);                                                                 // 320*C for 150 ms
-  bme.performReading();                                                                       // Take measurement from all the sensors
+  // bme.setGasHeater(320, 150);                                                                 // 320*C for 150 ms
+  if (bme.performReading()){
+    
+    temperatureInC = bme.temperature;
+    snprintf(temperatureString,sizeof(temperatureString),"%4.1f*C", temperatureInC);
 
-  temperatureInC = bme.temperature;
-  snprintf(temperatureString,sizeof(temperatureString),"%4.1f*C", temperatureInC);
+    relativeHumidity = bme.humidity;
+    snprintf(humidityString,sizeof(humidityString),"%4.1f%%", relativeHumidity);
 
-  relativeHumidity = bme.humidity;
-  snprintf(humidityString,sizeof(humidityString),"%4.1f%%", relativeHumidity);
+    pressureHpa = bme.pressure / 100.0;
+    snprintf(pressureString,sizeof(pressureString),"%4.1fHPa", pressureHpa);
 
-  pressureHpa = bme.pressure / 100.0;
-  snprintf(pressureString,sizeof(pressureString),"%4.1fHPa", pressureHpa);
+    // If lower temperature threshold is crossed, Set the flag true. 
+    if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
 
-  // If lower temperature threshold is crossed, Set the flag true. 
-  if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
+    // If upper temperature threshold is crossed, Set the flag true. 
+    if (temperatureInC > upperTemperatureThreshold) upperTemperatureThresholdCrossed = true;
 
-  // If upper temperature threshold is crossed, Set the flag true. 
-  if (temperatureInC > upperTemperatureThreshold) upperTemperatureThresholdCrossed = true;
+    // If lower temperature threshold is crossed, Set the flag true. 
+    if (relativeHumidity < lowerHumidityThreshold) lowerHumidityThresholdCrossed = true;
 
-  // If lower temperature threshold is crossed, Set the flag true. 
-  if (relativeHumidity < lowerHumidityThreshold) lowerHumidityThresholdCrossed = true;
+    // If lower temperature threshold is crossed, Set the flag true. 
+    if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
 
-  // If lower temperature threshold is crossed, Set the flag true. 
-  if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
+    return 1;
+  }                                                                       // Take measurement from all the sensors
+  else {
+        Particle.publish("Log", "Failed to perform reading :(");
+        return 0;
 
-  return 1;
+  }
+ 
 }
 
 // Function to send sms for threshold values
