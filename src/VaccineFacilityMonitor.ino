@@ -11,6 +11,7 @@
 // v1.00 - Added Temperature sensing and threshold logic.
 // v1.01 - Fixed Zero temperature check. 
 // v1.02 - Fixed epoch timestamp to fix error with aws quicksights. 
+// v1.03 - Fixed AWS Response template.
 
 /* 
   Todo : 
@@ -20,7 +21,7 @@
 */
 
 
-#define SOFTWARERELEASENUMBER "1.01"                                                        // Keep track of release numbers
+#define SOFTWARERELEASENUMBER "1.03"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "Adafruit_BME680.h"
@@ -269,15 +270,14 @@ void UbidotsHandler(const char *event, const char *data)                        
   char dataCopy[strlen(data)+1];                                                            // data needs to be copied since if (Particle.connected()) Particle.publish() will clear it
   strncpy(dataCopy, data, sizeof(dataCopy));                                                // Copy - overflow safe
   if (!strlen(dataCopy)) {                                                                  // First check to see if there is any data
-    if (Particle.connected()) Particle.publish("Ubidots Hook", "No Data", PRIVATE);
+    if (Particle.connected()) Particle.publish("AWS Hook", "No Data", PRIVATE);
     return;
   }
-  int responseCode = atoi(dataCopy);                                                        // Response is only a single number thanks to Template
-  if ((responseCode == 200) || (responseCode == 201))
-  {
-    if (Particle.connected()) Particle.publish("State","Response Received", PRIVATE);
-    lastPublish = millis();
-    dataInFlight = false;                                                                   // Data has been received
+  String responseCode = dataCopy;
+  if((strstr(responseCode,"SequenceNumber"))){
+     if (Particle.connected()) Particle.publish("State","Response Received", PRIVATE);
+     lastPublish = millis();
+     dataInFlight = false;   
   }
   else if (Particle.connected()) Particle.publish("Ubidots Hook", dataCopy, PRIVATE);       // Publish the response code
 }
