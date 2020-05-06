@@ -12,6 +12,10 @@
 // v1.01 - Fixed Zero temperature check. 
 // v1.02 - Fixed epoch timestamp to fix error with aws quicksights. 
 // v1.03 - Fixed AWS Response template.
+// v1.04 - Sent alert to aws to count number of alerts
+// v1.05 - Added a new branch for ubidots handler
+// v1.06 - Added particle variables to show the current threshold values. 
+
 
 /* 
   Todo : 
@@ -21,7 +25,7 @@
 */
 
 
-#define SOFTWARERELEASENUMBER "1.03"                                                        // Keep track of release numbers
+#define SOFTWARERELEASENUMBER "1.06"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "Adafruit_BME680.h"
@@ -52,35 +56,33 @@ const int tempLED     =   D5;
 
 int publishInterval;                                                                        // Publish interval for sending data. 
 const unsigned long webhookWait = 45000;                                                    // How long will we wair for a WebHook response
-const unsigned long resetWait = 300000;                                                     // How long will we wait in ERROR_STATE until reset
-const int publishFrequency = 1000;                                                          // We can only publish once a second
-unsigned long webhookTimeStamp = 0;                                                         // Webhooks...
-unsigned long resetTimeStamp = 0;                                                           // Resets - this keeps you from falling into a reset loop
-unsigned long lastPublish = 0;                                                              // Can only publish 1/sec on avg and 4/sec burst
+const unsigned long resetWait   = 300000;                                                   // How long will we wait in ERROR_STATE until reset
+const int publishFrequency      = 1000;                                                     // We can only publish once a second
+unsigned long webhookTimeStamp  = 0;                                                        // Webhooks...
+unsigned long resetTimeStamp    = 0;                                                        // Resets - this keeps you from falling into a reset loop
+unsigned long lastPublish       = 0;                                                        // Can only publish 1/sec on avg and 4/sec burst
 int sampleRate;                                                                             // Sample rate for idle state.
-time_t t;                                                                                    // Global time vairable
+time_t t;                                                                                   // Global time vairable
 
 // Program Variables
 int resetCount;                                                                             // Counts the number of times the Electron has had a pin reset
 int alertCount;                                                                             // Keeps track of non-reset issues - think of it as an indication of health
-bool ledState = LOW;                                                                        // variable used to store the last LED status, to toggle the light
-bool waiting = false;
 bool dataInFlight = true;
 const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
 byte controlRegister;                                                                       // Stores the control register values
-bool verboseMode=true;                                                                           // Enables more active communications for configutation and setup
+bool verboseMode=true;                                                                      // Enables more active communications for configutation and setup
 
 // Variables related to alerting on temperature thresholds. 
 
-bool upperTemperatureThresholdCrossed=false;                                                // Set this to true if the upper temp threshold is crossed
-bool lowerTemperatureThresholdCrossed=false;                                                // Set this to true if the lower temp threshold is crossed
-bool upperHumidityThresholdCrossed=false;                                                   // Set this to true if the upper humidty threshold is crossed
-bool lowerHumidityThresholdCrossed=false;                                                   // Set this to true if the lower humidty threshold is crossed
-bool thresholdCrossAcknowledged=false;                                                      // Once  sms is sent, Put all the variables to false again. 
-float upperTemperatureThreshold = 30;
-float lowerTemperatureThreshold = 2;
-float upperHumidityThreshold = 90;
-float lowerHumidityThreshold = 60;
+bool upperTemperatureThresholdCrossed = false;                                                // Set this to true if the upper temp threshold is crossed
+bool lowerTemperatureThresholdCrossed = false;                                                // Set this to true if the lower temp threshold is crossed
+bool upperHumidityThresholdCrossed    = false;                                                // Set this to true if the upper humidty threshold is crossed
+bool lowerHumidityThresholdCrossed    = false;                                                // Set this to true if the lower humidty threshold is crossed
+bool thresholdCrossAcknowledged       = false;                                                // Once  sms is sent, Put all the variables to false again. 
+float upperTemperatureThreshold       = 30;
+float lowerTemperatureThreshold       = 2;
+float upperHumidityThreshold          = 90;
+float lowerHumidityThreshold          = 60;
 char smsString[256];
 
 
@@ -92,6 +94,10 @@ char humidityString[16];
 char altitudeString[16];
 char pressureString[16];
 char batteryString[16];
+char upperTemperatureThresholdString[24];                                                     // String to show the current threshold readings.                         
+char lowerTemperatureThresholdString[24];                                                     // String to show the current threshold readings.                         
+char upperHumidityThresholdString[24];                                                        // String to show the current threshold readings.                         
+char lowerHumidityThresholdString[24];                                                        // String to show the current threshold readings.                         
 
 // Time Period Related Variables
 static int thresholdTimeStamp;                                                              // Global time vairable
@@ -123,6 +129,10 @@ void setup()                                                                    
   Particle.variable("temperature", temperatureString);
   Particle.variable("humidity", humidityString);
   Particle.variable("pressure", pressureString);
+  Particle.variable("temperature-Upper",upperTemperatureThresholdString);
+  Particle.variable("temperature-lower",lowerTemperatureThresholdString);
+  Particle.variable("humidity-upper",upperHumidityThresholdString);
+  Particle.variable("humidity-lower",lowerHumidityThresholdString);
   
   Particle.function("Measure-Now",measureNow);
   Particle.function("Verbose-Mode",setVerboseMode);
@@ -149,7 +159,7 @@ void setup()                                                                    
   bme.setGasHeater(320, 150); // 320*C for 150 ms
 
   takeMeasurements();                                                                      // For the benefit of monitoring the device
-
+  updateThresholdValue();                                                                  // For checking values of each device
  
   if(!connectToParticle()) {
     state = ERROR_STATE;                                                                   // We failed to connect can reset here or go to the ERROR state for remediation
@@ -171,7 +181,7 @@ void loop()
     static int TimePassed = 0;
     if (verboseMode && state != oldState) publishStateTransition();
    
-    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 3) {
+    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 30) {
       TimePassed = Time.minute();
       state = MEASURING_STATE;                                                     
       }
@@ -256,7 +266,6 @@ void loop()
 void sendEvent()
 {
   char data[256];                     
-  t = Time.now(); //Unix Format                                                      // Store the date in this character array - not global
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", temperatureInC, relativeHumidity, pressureHpa);
   Particle.publish("storage-facility-hook", data, PRIVATE);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
@@ -267,19 +276,29 @@ void sendEvent()
 
 void UbidotsHandler(const char *event, const char *data)                                    // Looks at the response from Ubidots - Will reset Photon if no successful response
 {                                                                                           // Response Template: "{{hourly.0.status_code}}" so, I should only get a 3 digit number back
-  char dataCopy[strlen(data)+1];                                                            // data needs to be copied since if (Particle.connected()) Particle.publish() will clear it
-  strncpy(dataCopy, data, sizeof(dataCopy));                                                // Copy - overflow safe
-  if (!strlen(dataCopy)) {                                                                  // First check to see if there is any data
-    if (Particle.connected()) Particle.publish("AWS Hook", "No Data", PRIVATE);
+    // Response Template: "{{hourly.0.status_code}}"
+  if (!data) {                                                                    // First check to see if there is any data
+    if (verboseMode) {
+      waitUntil(meterParticlePublish);
+      Particle.publish("Ubidots Hook", "No Data", PRIVATE);
+    }
     return;
   }
-  String responseCode = dataCopy;
-  if((strstr(responseCode,"SequenceNumber"))){
-     if (Particle.connected()) Particle.publish("State","Response Received", PRIVATE);
-     lastPublish = millis();
-     dataInFlight = false;   
+  int responseCode = atoi(data);                                                  // Response is only a single number thanks to Template
+  if ((responseCode == 200) || (responseCode == 201))
+  {
+    if (verboseMode) {
+      waitUntil(meterParticlePublish);
+      Particle.publish("State", "Response Received", PRIVATE);
+      
+    }
+    dataInFlight = false;    
   }
-  else if (Particle.connected()) Particle.publish("Ubidots Hook", dataCopy, PRIVATE);       // Publish the response code
+  else if (verboseMode) {
+    waitUntil(meterParticlePublish);      
+    Particle.publish("Ubidots Hook", data, PRIVATE);                              // Publish the response code
+  }
+
 }
 
 // These are the functions that are part of the takeMeasurements call
@@ -325,19 +344,26 @@ bool takeMeasurements() {
 bool ThresholdCrossed(){
   
   if ((lowerTemperatureThreshold || upperTemperatureThreshold)!=0){                               // If lower or upper threshold conditions are True. 
-    
+    char data[32];
+    snprintf(data,sizeof(data),"{\"temperature\":true");
     BlinkLED(tempLED);                                                                            // Start Blinking LED
     snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Temperature Threshold Crossed. Current Temperature is: %4.1f",temperatureInC);
     Particle.publish("sms-webhook",smsString,PRIVATE);                                            // Send the webhook . 
+    waitUntil(meterParticlePublish);
+    Particle.publish("Alert",data,PRIVATE);
     thresholdCrossAcknowledged = true;                                                            // Once, Published the data. Set all flags to false again . 
   }
 
   if ((upperHumidityThresholdCrossed || lowerHumidityThresholdCrossed)!=0){                       // If lower or upper threshold conditions are True. 
     
+    char data[32];
+    snprintf(data,sizeof(data),"{\"humidity\":true");
     BlinkLED(HumidityLED);                                                                        // Start Blinking LED
     snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Humidity Threshold Crossed. Current Humidity is: %4.1f and Current Temperature is: %4.1f",temperatureInC,relativeHumidity);
     Particle.publish("sms-webhook",smsString,PRIVATE);
-    thresholdCrossAcknowledged = true;
+    waitUntil(meterParticlePublish);
+    Particle.publish("Alert",data,PRIVATE);
+    thresholdCrossAcknowledged = true; 
   }
 
   thresholdTimeStamp = Time.minute();
@@ -445,6 +471,7 @@ int setUpperTempLimit(String value)
   upperTemperatureThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Upper Threshold Set",String(value),PRIVATE);
+  updateThresholdValue();
   return 1;
 }
 
@@ -453,6 +480,8 @@ int setLowerTempLimit(String value)
   lowerTemperatureThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Lower Threshold Set",String(value),PRIVATE);
+  updateThresholdValue();
+
   return 1;
 
 }
@@ -462,6 +491,8 @@ int setUpperHumidityLimit(String value)
   upperHumidityThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Upper Threshold Set",String(value),PRIVATE);
+  updateThresholdValue();
+
   return 1;
 }
 
@@ -470,5 +501,14 @@ int setLowerHumidityLimit(String value)
   lowerHumidityThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Lower Threshold Set",String(value),PRIVATE);
+  updateThresholdValue();
   return 1;
 }
+
+// This function updates the threshold value string in the console. 
+void updateThresholdValue(){
+    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",upperTemperatureThreshold);
+    snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",lowerTemperatureThreshold);
+    snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",upperHumidityThreshold);
+    snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",lowerHumidityThreshold);
+} 
