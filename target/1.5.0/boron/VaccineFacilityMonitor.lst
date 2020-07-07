@@ -13,31 +13,31 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
   4 .backup       00000004  2003f400  000db998  0000f400  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  5 .data         0000025c  2003ded0  000db99c  0001ded0  2**2
+  5 .data         0000025c  2003de90  000db99c  0001de90  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  6 .bss          000006c4  2003e130  2003e130  0002e130  2**3
+  6 .bss          00000704  2003e0f0  2003e0f0  0002e0f0  2**3
                   ALLOC
   7 .module_info_suffix 00000028  000dbbf8  000dbbf8  0002bbf8  2**0
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
   8 .module_info_crc 00000004  000dbc20  000dbc20  0002bc20  2**0
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  9 .debug_info   000f14c6  00000000  00000000  0002bc24  2**0
+  9 .debug_info   000f14c7  00000000  00000000  0002bc24  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_abbrev 00012dd9  00000000  00000000  0011d0ea  2**0
+ 10 .debug_abbrev 00012dd9  00000000  00000000  0011d0eb  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_loc    00021fec  00000000  00000000  0012fec3  2**0
+ 11 .debug_loc    00021fec  00000000  00000000  0012fec4  2**0
                   CONTENTS, READONLY, DEBUGGING
- 12 .debug_aranges 000028b0  00000000  00000000  00151eaf  2**0
+ 12 .debug_aranges 000028b0  00000000  00000000  00151eb0  2**0
                   CONTENTS, READONLY, DEBUGGING
- 13 .debug_ranges 00004d60  00000000  00000000  0015475f  2**0
+ 13 .debug_ranges 00004d60  00000000  00000000  00154760  2**0
                   CONTENTS, READONLY, DEBUGGING
- 14 .debug_macro  00037530  00000000  00000000  001594bf  2**0
+ 14 .debug_macro  00037530  00000000  00000000  001594c0  2**0
                   CONTENTS, READONLY, DEBUGGING
- 15 .debug_line   0002df8b  00000000  00000000  001909ef  2**0
+ 15 .debug_line   0002df8c  00000000  00000000  001909f0  2**0
                   CONTENTS, READONLY, DEBUGGING
- 16 .debug_str    00108d5d  00000000  00000000  001be97a  2**0
+ 16 .debug_str    00108d62  00000000  00000000  001be97c  2**0
                   CONTENTS, READONLY, DEBUGGING
- 17 .debug_frame  0000e274  00000000  00000000  002c76d8  2**2
+ 17 .debug_frame  0000e274  00000000  00000000  002c76e0  2**2
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -82,10 +82,10 @@ void* module_user_pre_init() {
    d4042:	4801      	ldr	r0, [pc, #4]	; (d4048 <module_user_pre_init+0x28>)
    d4044:	bd08      	pop	{r3, pc}
    d4046:	bf00      	nop
-   d4048:	2003ded0 	.word	0x2003ded0
+   d4048:	2003de90 	.word	0x2003de90
    d404c:	000db99c 	.word	0x000db99c
-   d4050:	2003e12c 	.word	0x2003e12c
-   d4054:	2003e130 	.word	0x2003e130
+   d4050:	2003e0ec 	.word	0x2003e0ec
+   d4054:	2003e0f0 	.word	0x2003e0f0
    d4058:	2003e7f4 	.word	0x2003e7f4
 
 000d405c <module_user_init>:
@@ -2330,8 +2330,8 @@ static int8_t read_field_data(struct bme680_field_data *data, struct bme680_dev 
    d4b52:	e8bd 8ff0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, pc}
    d4b56:	bf00      	nop
    d4b58:	000186a0 	.word	0x000186a0
-   d4b5c:	2003ded0 	.word	0x2003ded0
-   d4b60:	2003df10 	.word	0x2003df10
+   d4b5c:	2003de90 	.word	0x2003de90
+   d4b60:	2003ded0 	.word	0x2003ded0
 
 000d4b64 <_Z10measureNow6String>:
 // They are intended to allow for customization and control during installations
@@ -2651,20 +2651,20 @@ int setLowerHumidityLimit(String value)
 	...
 
 000d4c6c <_Z20updateThresholdValuev>:
-  Particle.publish("Lower Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
   return 1;
 }
 
+// This function updates the threshold value string in the console. 
 void updateThresholdValue(){
    d4c6c:	b507      	push	{r0, r1, r2, lr}
-    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %f3.1f",upperTemperatureThreshold);
+    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",upperTemperatureThreshold);
    d4c6e:	4b17      	ldr	r3, [pc, #92]	; (d4ccc <_Z20updateThresholdValuev+0x60>)
    d4c70:	6818      	ldr	r0, [r3, #0]
    d4c72:	f003 f8fd 	bl	d7e70 <__aeabi_f2d>
    d4c76:	4a16      	ldr	r2, [pc, #88]	; (d4cd0 <_Z20updateThresholdValuev+0x64>)
    d4c78:	e9cd 0100 	strd	r0, r1, [sp]
-   d4c7c:	2108      	movs	r1, #8
+   d4c7c:	2118      	movs	r1, #24
    d4c7e:	4815      	ldr	r0, [pc, #84]	; (d4cd4 <_Z20updateThresholdValuev+0x68>)
    d4c80:	f001 faec 	bl	d625c <snprintf>
     snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",lowerTemperatureThreshold);
@@ -2673,7 +2673,7 @@ void updateThresholdValue(){
    d4c88:	f003 f8f2 	bl	d7e70 <__aeabi_f2d>
    d4c8c:	4a13      	ldr	r2, [pc, #76]	; (d4cdc <_Z20updateThresholdValuev+0x70>)
    d4c8e:	e9cd 0100 	strd	r0, r1, [sp]
-   d4c92:	2108      	movs	r1, #8
+   d4c92:	2118      	movs	r1, #24
    d4c94:	4812      	ldr	r0, [pc, #72]	; (d4ce0 <_Z20updateThresholdValuev+0x74>)
    d4c96:	f001 fae1 	bl	d625c <snprintf>
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",upperHumidityThreshold);
@@ -2682,7 +2682,7 @@ void updateThresholdValue(){
    d4c9e:	f003 f8e7 	bl	d7e70 <__aeabi_f2d>
    d4ca2:	4a11      	ldr	r2, [pc, #68]	; (d4ce8 <_Z20updateThresholdValuev+0x7c>)
    d4ca4:	e9cd 0100 	strd	r0, r1, [sp]
-   d4ca8:	2108      	movs	r1, #8
+   d4ca8:	2118      	movs	r1, #24
    d4caa:	4810      	ldr	r0, [pc, #64]	; (d4cec <_Z20updateThresholdValuev+0x80>)
    d4cac:	f001 fad6 	bl	d625c <snprintf>
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",lowerHumidityThreshold);
@@ -2691,23 +2691,23 @@ void updateThresholdValue(){
    d4cb4:	f003 f8dc 	bl	d7e70 <__aeabi_f2d>
    d4cb8:	4a0e      	ldr	r2, [pc, #56]	; (d4cf4 <_Z20updateThresholdValuev+0x88>)
    d4cba:	e9cd 0100 	strd	r0, r1, [sp]
-   d4cbe:	2108      	movs	r1, #8
+   d4cbe:	2118      	movs	r1, #24
    d4cc0:	480d      	ldr	r0, [pc, #52]	; (d4cf8 <_Z20updateThresholdValuev+0x8c>)
    d4cc2:	f001 facb 	bl	d625c <snprintf>
    d4cc6:	b003      	add	sp, #12
    d4cc8:	f85d fb04 	ldr.w	pc, [sp], #4
-   d4ccc:	2003e028 	.word	0x2003e028
+   d4ccc:	2003dfe8 	.word	0x2003dfe8
    d4cd0:	000daf8e 	.word	0x000daf8e
-   d4cd4:	2003e168 	.word	0x2003e168
-   d4cd8:	2003e02c 	.word	0x2003e02c
-   d4cdc:	000dafa0 	.word	0x000dafa0
-   d4ce0:	2003e158 	.word	0x2003e158
-   d4ce4:	2003e034 	.word	0x2003e034
-   d4ce8:	000dafb1 	.word	0x000dafb1
-   d4cec:	2003e270 	.word	0x2003e270
-   d4cf0:	2003e038 	.word	0x2003e038
-   d4cf4:	000dafc5 	.word	0x000dafc5
-   d4cf8:	2003e134 	.word	0x2003e134
+   d4cd4:	2003e148 	.word	0x2003e148
+   d4cd8:	2003dfec 	.word	0x2003dfec
+   d4cdc:	000daf9f 	.word	0x000daf9f
+   d4ce0:	2003e128 	.word	0x2003e128
+   d4ce4:	2003dff4 	.word	0x2003dff4
+   d4ce8:	000dafb0 	.word	0x000dafb0
+   d4cec:	2003e260 	.word	0x2003e260
+   d4cf0:	2003dff8 	.word	0x2003dff8
+   d4cf4:	000dafc4 	.word	0x000dafc4
+   d4cf8:	2003e0f4 	.word	0x2003e0f4
 
 000d4cfc <_ZNSt14__shared_countILN9__gnu_cxx12_Lock_policyE0EED1Ev>:
       explicit __shared_count(const __weak_count<_Lp>& __r);
@@ -2840,15 +2840,15 @@ inline particle::Flags<TagT, ValueT>::Flags(Flag<TagT, ValueT> flag) :
    d4d8e:	b049      	add	sp, #292	; 0x124
    d4d90:	f85d fb04 	ldr.w	pc, [sp], #4
    d4d94:	2003e288 	.word	0x2003e288
-   d4d98:	2003e160 	.word	0x2003e160
+   d4d98:	2003e140 	.word	0x2003e140
    d4d9c:	2003e2b0 	.word	0x2003e2b0
-   d4da0:	000dafda 	.word	0x000dafda
-   d4da4:	2003e151 	.word	0x2003e151
-   d4da8:	000db014 	.word	0x000db014
+   d4da0:	000dafd9 	.word	0x000dafd9
+   d4da4:	2003e121 	.word	0x2003e121
+   d4da8:	000db013 	.word	0x000db013
    d4dac:	2003e290 	.word	0x2003e290
    d4db0:	2003e27a 	.word	0x2003e27a
-   d4db4:	2003e030 	.word	0x2003e030
-   d4db8:	2003e14c 	.word	0x2003e14c
+   d4db4:	2003dff0 	.word	0x2003dff0
+   d4db8:	2003e11c 	.word	0x2003e11c
 
 000d4dbc <_Z14UbidotsHandlerPKcS0_>:
 
@@ -2945,13 +2945,13 @@ void UbidotsHandler(const char *event, const char *data)                        
    d4e32:	b005      	add	sp, #20
    d4e34:	bd30      	pop	{r4, r5, pc}
    d4e36:	bf00      	nop
-   d4e38:	2003e024 	.word	0x2003e024
-   d4e3c:	2003e151 	.word	0x2003e151
-   d4e40:	000db02a 	.word	0x000db02a
-   d4e44:	000db051 	.word	0x000db051
-   d4e48:	000db03f 	.word	0x000db03f
-   d4e4c:	2003e030 	.word	0x2003e030
-   d4e50:	000db032 	.word	0x000db032
+   d4e38:	2003dfe4 	.word	0x2003dfe4
+   d4e3c:	2003e121 	.word	0x2003e121
+   d4e40:	000db029 	.word	0x000db029
+   d4e44:	000db050 	.word	0x000db050
+   d4e48:	000db03e 	.word	0x000db03e
+   d4e4c:	2003dff0 	.word	0x2003dff0
+   d4e50:	000db031 	.word	0x000db031
 
 000d4e54 <_Z16takeMeasurementsv>:
 
@@ -3120,24 +3120,24 @@ inline particle::Future<bool> CloudClass::publish(const char* name, const char* 
    d4f46:	bf00      	nop
    d4f48:	2003e2d0 	.word	0x2003e2d0
    d4f4c:	2003e2b0 	.word	0x2003e2b0
-   d4f50:	2003e160 	.word	0x2003e160
-   d4f54:	000db057 	.word	0x000db057
-   d4f58:	2003e13c 	.word	0x2003e13c
-   d4f5c:	000db05f 	.word	0x000db05f
+   d4f50:	2003e140 	.word	0x2003e140
+   d4f54:	000db056 	.word	0x000db056
+   d4f58:	2003e10c 	.word	0x2003e10c
+   d4f5c:	000db05e 	.word	0x000db05e
    d4f60:	2003e2c0 	.word	0x2003e2c0
    d4f64:	40590000 	.word	0x40590000
    d4f68:	2003e288 	.word	0x2003e288
-   d4f6c:	000db067 	.word	0x000db067
+   d4f6c:	000db066 	.word	0x000db066
    d4f70:	2003e292 	.word	0x2003e292
-   d4f74:	2003e02c 	.word	0x2003e02c
+   d4f74:	2003dfec 	.word	0x2003dfec
    d4f78:	2003e2b8 	.word	0x2003e2b8
-   d4f7c:	2003e028 	.word	0x2003e028
+   d4f7c:	2003dfe8 	.word	0x2003dfe8
    d4f80:	2003e291 	.word	0x2003e291
-   d4f84:	2003e038 	.word	0x2003e038
+   d4f84:	2003dff8 	.word	0x2003dff8
    d4f88:	2003e280 	.word	0x2003e280
    d4f8c:	2003e281 	.word	0x2003e281
-   d4f90:	000db070 	.word	0x000db070
-   d4f94:	000db08d 	.word	0x000db08d
+   d4f90:	000db06f 	.word	0x000db06f
+   d4f94:	000db08c 	.word	0x000db08c
 
 000d4f98 <_Z16ThresholdCrossedv>:
 
@@ -3330,21 +3330,21 @@ inline particle::Flags<TagT, ValueT>::Flags(Flag<TagT, ValueT> flag) :
    d50aa:	2001      	movs	r0, #1
    d50ac:	b00f      	add	sp, #60	; 0x3c
    d50ae:	bdf0      	pop	{r4, r5, r6, r7, pc}
-   d50b0:	2003e02c 	.word	0x2003e02c
+   d50b0:	2003dfec 	.word	0x2003dfec
    d50b4:	2003e278 	.word	0x2003e278
-   d50b8:	2003e028 	.word	0x2003e028
-   d50bc:	000db091 	.word	0x000db091
-   d50c0:	2003e151 	.word	0x2003e151
+   d50b8:	2003dfe8 	.word	0x2003dfe8
+   d50bc:	000db090 	.word	0x000db090
+   d50c0:	2003e121 	.word	0x2003e121
    d50c4:	2003e2b0 	.word	0x2003e2b0
-   d50c8:	2003e170 	.word	0x2003e170
-   d50cc:	000db0a5 	.word	0x000db0a5
-   d50d0:	000db0f7 	.word	0x000db0f7
-   d50d4:	000db103 	.word	0x000db103
+   d50c8:	2003e160 	.word	0x2003e160
+   d50cc:	000db0a4 	.word	0x000db0a4
+   d50d0:	000db0f6 	.word	0x000db0f6
+   d50d4:	000db102 	.word	0x000db102
    d50d8:	2003e27b 	.word	0x2003e27b
    d50dc:	2003e280 	.word	0x2003e280
-   d50e0:	000db109 	.word	0x000db109
-   d50e4:	2003e160 	.word	0x2003e160
-   d50e8:	000db11a 	.word	0x000db11a
+   d50e0:	000db108 	.word	0x000db108
+   d50e4:	2003e140 	.word	0x2003e140
+   d50e8:	000db119 	.word	0x000db119
    d50ec:	2003e27c 	.word	0x2003e27c
 
 000d50f0 <_Z14setVerboseMode6String>:
@@ -3410,12 +3410,12 @@ int setVerboseMode(String command) // Function to force sending data in current 
    d513c:	b005      	add	sp, #20
    d513e:	bd30      	pop	{r4, r5, pc}
    d5140:	000db41a 	.word	0x000db41a
-   d5144:	2003e024 	.word	0x2003e024
-   d5148:	2003e151 	.word	0x2003e151
-   d514c:	000db188 	.word	0x000db188
-   d5150:	000db199 	.word	0x000db199
-   d5154:	000db19b 	.word	0x000db19b
-   d5158:	000db1ab 	.word	0x000db1ab
+   d5144:	2003dfe4 	.word	0x2003dfe4
+   d5148:	2003e121 	.word	0x2003e121
+   d514c:	000db187 	.word	0x000db187
+   d5150:	000db198 	.word	0x000db198
+   d5154:	000db19a 	.word	0x000db19a
+   d5158:	000db1aa 	.word	0x000db1aa
 
 000d515c <_Z22publishStateTransitionv>:
 
@@ -3486,11 +3486,11 @@ void publishStateTransition(void)
    d51bc:	bd30      	pop	{r4, r5, pc}
    d51be:	bf00      	nop
    d51c0:	2003e279 	.word	0x2003e279
-   d51c4:	2003e150 	.word	0x2003e150
-   d51c8:	2003df50 	.word	0x2003df50
-   d51cc:	000db1b0 	.word	0x000db1b0
-   d51d0:	2003e151 	.word	0x2003e151
-   d51d4:	000db1be 	.word	0x000db1be
+   d51c4:	2003e120 	.word	0x2003e120
+   d51c8:	2003df10 	.word	0x2003df10
+   d51cc:	000db1af 	.word	0x000db1af
+   d51d0:	2003e121 	.word	0x2003e121
+   d51d4:	000db1bd 	.word	0x000db1bd
    d51d8:	2003e348 	.word	0x2003e348
 
 000d51dc <loop>:
@@ -3831,20 +3831,20 @@ void loop()
    d53c8:	bd70      	pop	{r4, r5, r6, pc}
    d53ca:	bf00      	nop
    d53cc:	2003e279 	.word	0x2003e279
-   d53d0:	2003e024 	.word	0x2003e024
-   d53d4:	2003e150 	.word	0x2003e150
+   d53d0:	2003dfe4 	.word	0x2003dfe4
+   d53d4:	2003e120 	.word	0x2003e120
    d53d8:	2003e290 	.word	0x2003e290
-   d53dc:	2003e154 	.word	0x2003e154
+   d53dc:	2003e124 	.word	0x2003e124
    d53e0:	2003e2bc 	.word	0x2003e2bc
-   d53e4:	2003e151 	.word	0x2003e151
-   d53e8:	000db1cf 	.word	0x000db1cf
-   d53ec:	000db051 	.word	0x000db051
+   d53e4:	2003e121 	.word	0x2003e121
+   d53e8:	000db1ce 	.word	0x000db1ce
+   d53ec:	000db050 	.word	0x000db050
    d53f0:	2003e348 	.word	0x2003e348
-   d53f4:	2003e030 	.word	0x2003e030
-   d53f8:	2003e14c 	.word	0x2003e14c
-   d53fc:	000db1e9 	.word	0x000db1e9
+   d53f4:	2003dff0 	.word	0x2003dff0
+   d53f8:	2003e11c 	.word	0x2003e11c
+   d53fc:	000db1e8 	.word	0x000db1e8
    d5400:	000db4af 	.word	0x000db4af
-   d5404:	000db202 	.word	0x000db202
+   d5404:	000db201 	.word	0x000db201
    d5408:	2003e291 	.word	0x2003e291
    d540c:	2003e2b8 	.word	0x2003e2b8
    d5410:	2003e27b 	.word	0x2003e27b
@@ -3891,9 +3891,9 @@ int setUpperTempLimit(String value)
    d545e:	b008      	add	sp, #32
    d5460:	bd10      	pop	{r4, pc}
    d5462:	bf00      	nop
-   d5464:	2003e028 	.word	0x2003e028
-   d5468:	2003e151 	.word	0x2003e151
-   d546c:	000db216 	.word	0x000db216
+   d5464:	2003dfe8 	.word	0x2003dfe8
+   d5468:	2003e121 	.word	0x2003e121
+   d546c:	000db215 	.word	0x000db215
 
 000d5470 <_Z17setLowerTempLimit6String>:
 
@@ -3934,9 +3934,9 @@ int setLowerTempLimit(String value)
    d54b2:	b008      	add	sp, #32
    d54b4:	bd10      	pop	{r4, pc}
    d54b6:	bf00      	nop
-   d54b8:	2003e02c 	.word	0x2003e02c
-   d54bc:	2003e151 	.word	0x2003e151
-   d54c0:	000db22a 	.word	0x000db22a
+   d54b8:	2003dfec 	.word	0x2003dfec
+   d54bc:	2003e121 	.word	0x2003e121
+   d54c0:	000db229 	.word	0x000db229
 
 000d54c4 <_Z21setUpperHumidityLimit6String>:
 
@@ -3976,9 +3976,9 @@ int setUpperHumidityLimit(String value)
    d5506:	b008      	add	sp, #32
    d5508:	bd10      	pop	{r4, pc}
    d550a:	bf00      	nop
-   d550c:	2003e034 	.word	0x2003e034
-   d5510:	2003e151 	.word	0x2003e151
-   d5514:	000db216 	.word	0x000db216
+   d550c:	2003dff4 	.word	0x2003dff4
+   d5510:	2003e121 	.word	0x2003e121
+   d5514:	000db215 	.word	0x000db215
 
 000d5518 <_Z21setLowerHumidityLimit6String>:
 
@@ -4017,11 +4017,11 @@ int setLowerHumidityLimit(String value)
    d555a:	b008      	add	sp, #32
    d555c:	bd10      	pop	{r4, pc}
    d555e:	bf00      	nop
-   d5560:	2003e038 	.word	0x2003e038
-   d5564:	2003e151 	.word	0x2003e151
-   d5568:	000db22a 	.word	0x000db22a
+   d5560:	2003dff8 	.word	0x2003dff8
+   d5564:	2003e121 	.word	0x2003e121
+   d5568:	000db229 	.word	0x000db229
 
-000d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>:
+000d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>:
         return _variable(varKey, (const char*)userVar, userVarType);
     }
 
@@ -4162,31 +4162,31 @@ void setup()                                                                    
   Particle.variable("temperature", temperatureString);
    d55fa:	4948      	ldr	r1, [pc, #288]	; (d571c <setup+0x19c>)
    d55fc:	4848      	ldr	r0, [pc, #288]	; (d5720 <setup+0x1a0>)
-   d55fe:	f7ff ffb5 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d55fe:	f7ff ffb5 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("humidity", humidityString);
    d5602:	4948      	ldr	r1, [pc, #288]	; (d5724 <setup+0x1a4>)
    d5604:	4848      	ldr	r0, [pc, #288]	; (d5728 <setup+0x1a8>)
-   d5606:	f7ff ffb1 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d5606:	f7ff ffb1 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("pressure", pressureString);
    d560a:	4948      	ldr	r1, [pc, #288]	; (d572c <setup+0x1ac>)
    d560c:	4848      	ldr	r0, [pc, #288]	; (d5730 <setup+0x1b0>)
-   d560e:	f7ff ffad 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d560e:	f7ff ffad 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("temperature-Upper",upperTemperatureThresholdString);
    d5612:	4948      	ldr	r1, [pc, #288]	; (d5734 <setup+0x1b4>)
    d5614:	4848      	ldr	r0, [pc, #288]	; (d5738 <setup+0x1b8>)
-   d5616:	f7ff ffa9 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d5616:	f7ff ffa9 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("temperature-lower",lowerTemperatureThresholdString);
    d561a:	4948      	ldr	r1, [pc, #288]	; (d573c <setup+0x1bc>)
    d561c:	4848      	ldr	r0, [pc, #288]	; (d5740 <setup+0x1c0>)
-   d561e:	f7ff ffa5 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d561e:	f7ff ffa5 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("humidity-upper",upperHumidityThresholdString);
    d5622:	4948      	ldr	r1, [pc, #288]	; (d5744 <setup+0x1c4>)
    d5624:	4848      	ldr	r0, [pc, #288]	; (d5748 <setup+0x1c8>)
-   d5626:	f7ff ffa1 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d5626:	f7ff ffa1 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   Particle.variable("humidity-lower",lowerHumidityThresholdString);
    d562a:	4948      	ldr	r1, [pc, #288]	; (d574c <setup+0x1cc>)
    d562c:	4848      	ldr	r0, [pc, #288]	; (d5750 <setup+0x1d0>)
-   d562e:	f7ff ff9d 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA8_cEEEbRKT_DpOT0_>
+   d562e:	f7ff ff9d 	bl	d556c <_ZN10CloudClass8variableIA15_cIRA24_cEEEbRKT_DpOT0_>
   
   Particle.function("Measure-Now",measureNow);
    d5632:	4948      	ldr	r1, [pc, #288]	; (d5754 <setup+0x1d4>)
@@ -4333,41 +4333,41 @@ void setup()                                                                    
    d5708:	000daf4e 	.word	0x000daf4e
    d570c:	2003e279 	.word	0x2003e279
    d5710:	000d4dbd 	.word	0x000d4dbd
-   d5714:	2003e020 	.word	0x2003e020
-   d5718:	000db23e 	.word	0x000db23e
-   d571c:	2003e13c 	.word	0x2003e13c
-   d5720:	000db246 	.word	0x000db246
+   d5714:	2003dfe0 	.word	0x2003dfe0
+   d5718:	000db23d 	.word	0x000db23d
+   d571c:	2003e10c 	.word	0x2003e10c
+   d5720:	000db245 	.word	0x000db245
    d5724:	2003e2c0 	.word	0x2003e2c0
-   d5728:	000db252 	.word	0x000db252
+   d5728:	000db251 	.word	0x000db251
    d572c:	2003e292 	.word	0x2003e292
-   d5730:	000db25b 	.word	0x000db25b
-   d5734:	2003e168 	.word	0x2003e168
-   d5738:	000db264 	.word	0x000db264
-   d573c:	2003e158 	.word	0x2003e158
-   d5740:	000db276 	.word	0x000db276
-   d5744:	2003e270 	.word	0x2003e270
-   d5748:	000db288 	.word	0x000db288
-   d574c:	2003e134 	.word	0x2003e134
-   d5750:	000db297 	.word	0x000db297
+   d5730:	000db25a 	.word	0x000db25a
+   d5734:	2003e148 	.word	0x2003e148
+   d5738:	000db263 	.word	0x000db263
+   d573c:	2003e128 	.word	0x2003e128
+   d5740:	000db275 	.word	0x000db275
+   d5744:	2003e260 	.word	0x2003e260
+   d5748:	000db287 	.word	0x000db287
+   d574c:	2003e0f4 	.word	0x2003e0f4
+   d5750:	000db296 	.word	0x000db296
    d5754:	000d4b65 	.word	0x000d4b65
-   d5758:	000db2a6 	.word	0x000db2a6
+   d5758:	000db2a5 	.word	0x000db2a5
    d575c:	000d50f1 	.word	0x000d50f1
-   d5760:	000db2b2 	.word	0x000db2b2
+   d5760:	000db2b1 	.word	0x000db2b1
    d5764:	000d541d 	.word	0x000d541d
-   d5768:	000db2bf 	.word	0x000db2bf
+   d5768:	000db2be 	.word	0x000db2be
    d576c:	000d5471 	.word	0x000d5471
-   d5770:	000db2d0 	.word	0x000db2d0
+   d5770:	000db2cf 	.word	0x000db2cf
    d5774:	000d5519 	.word	0x000d5519
-   d5778:	000db2e1 	.word	0x000db2e1
+   d5778:	000db2e0 	.word	0x000db2e0
    d577c:	000d54c5 	.word	0x000d54c5
-   d5780:	000db2f6 	.word	0x000db2f6
+   d5780:	000db2f5 	.word	0x000db2f5
    d5784:	2003e2d0 	.word	0x2003e2d0
    d5788:	2003e2bc 	.word	0x2003e2bc
-   d578c:	000db30a 	.word	0x000db30a
-   d5790:	000db328 	.word	0x000db328
-   d5794:	2003e024 	.word	0x2003e024
-   d5798:	2003e151 	.word	0x2003e151
-   d579c:	000db33a 	.word	0x000db33a
+   d578c:	000db309 	.word	0x000db309
+   d5790:	000db327 	.word	0x000db327
+   d5794:	2003dfe4 	.word	0x2003dfe4
+   d5798:	2003e121 	.word	0x2003e121
+   d579c:	000db339 	.word	0x000db339
    d57a0:	2003e348 	.word	0x2003e348
 
 000d57a4 <_GLOBAL__sub_I_bme>:
@@ -4379,7 +4379,7 @@ inline particle::Flag<TagT, ValueT>::Flag(ValueT val) :
         val_(val) {
    d57a4:	4b13      	ldr	r3, [pc, #76]	; (d57f4 <_GLOBAL__sub_I_bme+0x50>)
 void updateThresholdValue(){
-    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %f3.1f",upperTemperatureThreshold);
+    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",upperTemperatureThreshold);
     snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",lowerTemperatureThreshold);
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",lowerHumidityThreshold);
@@ -4476,17 +4476,17 @@ SYSTEM_THREAD(ENABLED);                                                         
    d57e8:	4631      	mov	r1, r6
    d57ea:	2004      	movs	r0, #4
 void updateThresholdValue(){
-    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %f3.1f",upperTemperatureThreshold);
+    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",upperTemperatureThreshold);
     snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",lowerTemperatureThreshold);
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",lowerHumidityThreshold);
    d57ec:	e8bd 4070 	ldmia.w	sp!, {r4, r5, r6, lr}
    d57f0:	f000 ba90 	b.w	d5d14 <HAL_Feature_Set>
    d57f4:	2003e281 	.word	0x2003e281
-   d57f8:	2003e151 	.word	0x2003e151
+   d57f8:	2003e121 	.word	0x2003e121
    d57fc:	2003e2a4 	.word	0x2003e2a4
    d5800:	2003e2d0 	.word	0x2003e2d0
-   d5804:	2003e130 	.word	0x2003e130
+   d5804:	2003e0f0 	.word	0x2003e0f0
    d5808:	000d4b81 	.word	0x000d4b81
 
 000d580c <_ZL10delay_msecm>:
@@ -6907,7 +6907,7 @@ private:
 RecursiveMutex WiringBleLock::mutex_;
    d62f0:	f001 baee 	b.w	d78d0 <__aeabi_atexit>
    d62f4:	2003e350 	.word	0x2003e350
-   d62f8:	2003e130 	.word	0x2003e130
+   d62f8:	2003e0f0 	.word	0x2003e0f0
    d62fc:	000d62bb 	.word	0x000d62bb
 
 000d6300 <_ZN5spark13CellularClass5readyEv>:
@@ -9949,7 +9949,7 @@ MeshClass Mesh;
    d6d8c:	2003e390 	.word	0x2003e390
    d6d90:	000db524 	.word	0x000db524
    d6d94:	000db4f0 	.word	0x000db4f0
-   d6d98:	2003e130 	.word	0x2003e130
+   d6d98:	2003e0f0 	.word	0x2003e0f0
    d6d9c:	000d6d39 	.word	0x000d6d39
 
 000d6da0 <_ZN5spark12NetworkClass7connectEj>:
@@ -10516,7 +10516,7 @@ RGBClass RGB;
    d6fbe:	f000 bc87 	b.w	d78d0 <__aeabi_atexit>
    d6fc2:	bf00      	nop
    d6fc4:	2003e56c 	.word	0x2003e56c
-   d6fc8:	2003e130 	.word	0x2003e130
+   d6fc8:	2003e0f0 	.word	0x2003e0f0
    d6fcc:	000d6fa7 	.word	0x000d6fa7
 
 000d6fd0 <_ZN8SPIClassD1Ev>:
@@ -11479,7 +11479,7 @@ SystemClass System;
    d7302:	f000 bae5 	b.w	d78d0 <__aeabi_atexit>
    d7306:	bf00      	nop
    d7308:	2003e57c 	.word	0x2003e57c
-   d730c:	2003e130 	.word	0x2003e130
+   d730c:	2003e0f0 	.word	0x2003e0f0
    d7310:	000d4b81 	.word	0x000d4b81
 
 000d7314 <_ZL22Refresh_UnixTime_Cachel>:
@@ -11819,7 +11819,7 @@ const char* TimeClass::format_spec = TIME_FORMAT_DEFAULT;
    d7426:	601a      	str	r2, [r3, #0]
    d7428:	4770      	bx	lr
    d742a:	bf00      	nop
-   d742c:	2003e03c 	.word	0x2003e03c
+   d742c:	2003dffc 	.word	0x2003dffc
    d7430:	2003e5ac 	.word	0x2003e5ac
 
 000d7434 <_ZN11USARTSerialD1Ev>:
@@ -12055,7 +12055,7 @@ USARTSerial& __fetch_global_Serial1()
    d7524:	2003e658 	.word	0x2003e658
    d7528:	2003e5d0 	.word	0x2003e5d0
    d752c:	2003e5bc 	.word	0x2003e5bc
-   d7530:	2003e130 	.word	0x2003e130
+   d7530:	2003e0f0 	.word	0x2003e0f0
    d7534:	000d7435 	.word	0x000d7435
 
 000d7538 <_ZN9USBSerial14blockOnOverrunEb>:
@@ -12303,7 +12303,7 @@ USBSerial& _fetch_usbserial()
    d762e:	bd30      	pop	{r4, r5, pc}
    d7630:	2003e6dc 	.word	0x2003e6dc
    d7634:	2003e6e0 	.word	0x2003e6e0
-   d7638:	2003e130 	.word	0x2003e130
+   d7638:	2003e0f0 	.word	0x2003e0f0
    d763c:	000d753d 	.word	0x000d753d
 
 000d7640 <serialEventRun>:
@@ -12810,7 +12810,7 @@ TwoWire& __fetch_global_Wire()
    d787e:	bd30      	pop	{r4, r5, pc}
    d7880:	2003e700 	.word	0x2003e700
    d7884:	2003e704 	.word	0x2003e704
-   d7888:	2003e130 	.word	0x2003e130
+   d7888:	2003e0f0 	.word	0x2003e0f0
    d788c:	000d6a29 	.word	0x000d6a29
 
 000d7890 <_ZN8particle7globals11instanceSpiEv>:
@@ -12844,7 +12844,7 @@ SPIClass& instanceSpi() {
    d78be:	bd38      	pop	{r3, r4, r5, pc}
    d78c0:	2003e724 	.word	0x2003e724
    d78c4:	2003e718 	.word	0x2003e718
-   d78c8:	2003e130 	.word	0x2003e130
+   d78c8:	2003e0f0 	.word	0x2003e0f0
    d78cc:	000d6fd1 	.word	0x000d6fd1
 
 000d78d0 <__aeabi_atexit>:
@@ -14380,7 +14380,7 @@ SPIClass& instanceSpi() {
    d8946:	4628      	mov	r0, r5
    d8948:	e8bd 4038 	ldmia.w	sp!, {r3, r4, r5, lr}
    d894c:	f000 b802 	b.w	d8954 <localtime_r>
-   d8950:	2003e0a4 	.word	0x2003e0a4
+   d8950:	2003e064 	.word	0x2003e064
 
 000d8954 <localtime_r>:
    d8954:	e92d 41f0 	stmdb	sp!, {r4, r5, r6, r7, r8, lr}
@@ -14580,7 +14580,7 @@ SPIClass& instanceSpi() {
 000d8b20 <_localeconv_r>:
    d8b20:	4800      	ldr	r0, [pc, #0]	; (d8b24 <_localeconv_r+0x4>)
    d8b22:	4770      	bx	lr
-   d8b24:	2003e0a8 	.word	0x2003e0a8
+   d8b24:	2003e068 	.word	0x2003e068
 
 000d8b28 <memcpy>:
    d8b28:	b510      	push	{r4, lr}
@@ -14635,7 +14635,7 @@ SPIClass& instanceSpi() {
    d8b96:	611d      	str	r5, [r3, #16]
    d8b98:	615a      	str	r2, [r3, #20]
    d8b9a:	bd38      	pop	{r3, r4, r5, pc}
-   d8b9c:	2003e0a4 	.word	0x2003e0a4
+   d8b9c:	2003e064 	.word	0x2003e064
 
 000d8ba0 <strcmp>:
    d8ba0:	f810 2b01 	ldrb.w	r2, [r0], #1
@@ -14661,7 +14661,7 @@ SPIClass& instanceSpi() {
    d8bc8:	6818      	ldr	r0, [r3, #0]
    d8bca:	f000 b803 	b.w	d8bd4 <_strdup_r>
    d8bce:	bf00      	nop
-   d8bd0:	2003e0a4 	.word	0x2003e0a4
+   d8bd0:	2003e064 	.word	0x2003e064
 
 000d8bd4 <_strdup_r>:
    d8bd4:	b570      	push	{r4, r5, r6, lr}
@@ -15949,7 +15949,7 @@ SPIClass& instanceSpi() {
    d989c:	4601      	mov	r1, r0
    d989e:	6818      	ldr	r0, [r3, #0]
    d98a0:	f7ff b9fa 	b.w	d8c98 <_strtod_r>
-   d98a4:	2003e0a4 	.word	0x2003e0a4
+   d98a4:	2003e064 	.word	0x2003e064
 
 000d98a8 <_strtol_r>:
    d98a8:	e92d 47f0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
@@ -16054,7 +16054,7 @@ SPIClass& instanceSpi() {
    d99a8:	e7aa      	b.n	d9900 <_strtol_r+0x58>
    d99aa:	e8bd 87f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, sl, pc}
    d99ae:	bf00      	nop
-   d99b0:	2003e040 	.word	0x2003e040
+   d99b0:	2003e000 	.word	0x2003e000
 
 000d99b4 <strtol>:
    d99b4:	4613      	mov	r3, r2
@@ -16064,7 +16064,7 @@ SPIClass& instanceSpi() {
    d99bc:	6800      	ldr	r0, [r0, #0]
    d99be:	f7ff bf73 	b.w	d98a8 <_strtol_r>
    d99c2:	bf00      	nop
-   d99c4:	2003e0a4 	.word	0x2003e0a4
+   d99c4:	2003e064 	.word	0x2003e064
 
 000d99c8 <_strtoul_r>:
    d99c8:	e92d 47f0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
@@ -16164,7 +16164,7 @@ SPIClass& instanceSpi() {
    d9ab8:	e7b2      	b.n	d9a20 <_strtoul_r+0x58>
    d9aba:	e8bd 87f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, sl, pc}
    d9abe:	bf00      	nop
-   d9ac0:	2003e040 	.word	0x2003e040
+   d9ac0:	2003e000 	.word	0x2003e000
 
 000d9ac4 <strtoul>:
    d9ac4:	4613      	mov	r3, r2
@@ -16174,7 +16174,7 @@ SPIClass& instanceSpi() {
    d9acc:	6800      	ldr	r0, [r0, #0]
    d9ace:	f7ff bf7b 	b.w	d99c8 <_strtoul_r>
    d9ad2:	bf00      	nop
-   d9ad4:	2003e0a4 	.word	0x2003e0a4
+   d9ad4:	2003e064 	.word	0x2003e064
 
 000d9ad8 <__tzcalc_limits>:
    d9ad8:	e92d 4ff7 	stmdb	sp!, {r0, r1, r2, r4, r5, r6, r7, r8, r9, sl, fp, lr}
@@ -16313,7 +16313,7 @@ SPIClass& instanceSpi() {
    d9c2c:	4b01      	ldr	r3, [pc, #4]	; (d9c34 <_tzset_unlocked+0x8>)
    d9c2e:	6818      	ldr	r0, [r3, #0]
    d9c30:	f000 b802 	b.w	d9c38 <_tzset_unlocked_r>
-   d9c34:	2003e0a4 	.word	0x2003e0a4
+   d9c34:	2003e064 	.word	0x2003e064
 
 000d9c38 <_tzset_unlocked_r>:
    d9c38:	e92d 4ff0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
@@ -16598,7 +16598,7 @@ SPIClass& instanceSpi() {
    d9f10:	2003e7ec 	.word	0x2003e7ec
    d9f14:	000db81b 	.word	0x000db81b
    d9f18:	2003e7e8 	.word	0x2003e7e8
-   d9f1c:	2003e0e0 	.word	0x2003e0e0
+   d9f1c:	2003e0a0 	.word	0x2003e0a0
    d9f20:	2003e7d7 	.word	0x2003e7d7
    d9f24:	000db81f 	.word	0x000db81f
    d9f28:	000db842 	.word	0x000db842
@@ -17303,7 +17303,7 @@ SPIClass& instanceSpi() {
    da5e2:	464d      	mov	r5, r9
    da5e4:	e7e1      	b.n	da5aa <_findenv_r+0x36>
    da5e6:	bf00      	nop
-   da5e8:	2003e128 	.word	0x2003e128
+   da5e8:	2003e0e8 	.word	0x2003e0e8
 
 000da5ec <_getenv_r>:
    da5ec:	b507      	push	{r0, r1, r2, lr}
@@ -17316,7 +17316,7 @@ SPIClass& instanceSpi() {
 000da5fc <__gettzinfo>:
    da5fc:	4800      	ldr	r0, [pc, #0]	; (da600 <__gettzinfo+0x4>)
    da5fe:	4770      	bx	lr
-   da600:	2003e0e8 	.word	0x2003e0e8
+   da600:	2003e0a8 	.word	0x2003e0a8
 
 000da604 <gmtime_r>:
    da604:	6802      	ldr	r2, [r0, #0]
@@ -18255,66 +18255,66 @@ SPIClass& instanceSpi() {
    daf44:	0000 0000 0100 0402 1008 7453 7261 7574     ..........Startu
    daf54:	2070 7553 6363 7365 6673 6c75 0000 0000     p Successful....
 	...
-   daf8c:	0000 6554 706d 4d5f 7861 3a20 2520 3366     ..Temp_Max : %f3
-   daf9c:	312e 0066 6554 706d 4d5f 7869 3a20 2520     .1f.Temp_Mix : %
-   dafac:	2e33 6631 4800 6d75 6469 7469 5f79 614d     3.1f.Humidity_Ma
-   dafbc:	3a78 2520 2e33 6631 4800 6d75 6469 7469     x: %3.1f.Humidit
-   dafcc:	5f79 694d 206e 203a 3325 312e 0066 227b     y_Min : %3.1f.{"
-   dafdc:	6554 706d 7265 7461 7275 2265 253a 2e34     Temperature":%4.
-   dafec:	6631 202c 4822 6d75 6469 7469 2279 253a     1f, "Humidity":%
-   daffc:	2e34 6631 202c 5022 6572 7373 7275 2265     4.1f, "Pressure"
-   db00c:	253a 2e34 6631 007d 7473 726f 6761 2d65     :%4.1f}.storage-
-   db01c:	6166 6963 696c 7974 682d 6f6f 006b 6f4e     facility-hook.No
-   db02c:	4420 7461 0061 6255 6469 746f 2073 6f48      Data.Ubidots Ho
-   db03c:	6b6f 5200 7365 6f70 736e 2065 6552 6563     ok.Response Rece
-   db04c:	7669 6465 5300 6174 6574 2500 2e34 6631     ived.State.%4.1f
-   db05c:	432a 2500 2e34 6631 2525 2500 2e34 6631     *C.%4.1f%%.%4.1f
-   db06c:	5048 0061 6146 6c69 6465 7420 206f 6570     HPa.Failed to pe
-   db07c:	6672 726f 206d 6572 6461 6e69 2067 283a     rform reading :(
-   db08c:	4c00 676f 7b00 7422 6d65 6570 6172 7574     .Log.{"temperatu
-   db09c:	6572 3a22 7274 6575 4100 454c 5452 4620     re":true.ALERT F
-   db0ac:	4f52 204d 754b 766d 4961 546f 203a 6554     ROM KumvaIoT: Te
-   db0bc:	706d 7265 7461 7275 2065 6854 6572 6873     mperature Thresh
-   db0cc:	6c6f 2064 7243 736f 6573 2e64 4320 7275     old Crossed. Cur
-   db0dc:	6572 746e 5420 6d65 6570 6172 7574 6572     rent Temperature
-   db0ec:	6920 3a73 2520 2e34 6631 7300 736d 772d      is: %4.1f.sms-w
-   db0fc:	6265 6f68 6b6f 4100 656c 7472 7b00 6822     ebhook.Alert.{"h
-   db10c:	6d75 6469 7469 2279 743a 7572 0065 4c41     umidity":true.AL
-   db11c:	5245 2054 5246 4d4f 4b20 6d75 6176 6f49     ERT FROM KumvaIo
-   db12c:	3a54 4820 6d75 6469 7469 2079 6854 6572     T: Humidity Thre
-   db13c:	6873 6c6f 2064 7243 736f 6573 2e64 4320     shold Crossed. C
-   db14c:	7275 6572 746e 4820 6d75 6469 7469 2079     urrent Humidity 
-   db15c:	7369 203a 3425 312e 2066 6e61 2064 7543     is: %4.1f and Cu
-   db16c:	7272 6e65 2074 6554 706d 7265 7461 7275     rrent Temperatur
-   db17c:	2065 7369 203a 3425 312e 0066 6553 2074     e is: %4.1f.Set 
-   db18c:	6556 6272 736f 2065 6f4d 6564 3000 4300     Verbose Mode.0.C
-   db19c:	656c 7261 6465 5620 7265 6f62 6573 4d20     leared Verbose M
-   db1ac:	646f 0065 7246 6d6f 2520 2073 6f74 2520     ode.From %s to %
-   db1bc:	0073 7453 7461 2065 7254 6e61 6973 6974     s.State Transiti
-   db1cc:	6e6f 4500 7272 726f 7420 6b61 6e69 2067     on.Error taking 
-   db1dc:	654d 7361 7275 6d65 6e65 7374 7300 6170     Measurements.spa
-   db1ec:	6b72 642f 7665 6369 2f65 6573 7373 6f69     rk/device/sessio
-   db1fc:	2f6e 6e65 0064 7245 6f72 2072 7453 7461     n/end.Error Stat
-   db20c:	2065 202d 6552 6573 0074 7055 6570 2072     e - Reset.Upper 
-   db21c:	6854 6572 6873 6c6f 2064 6553 0074 6f4c     Threshold Set.Lo
-   db22c:	6577 2072 6854 6572 6873 6c6f 2064 6553     wer Threshold Se
-   db23c:	0074 6552 656c 7361 0065 6574 706d 7265     t.Release.temper
-   db24c:	7461 7275 0065 7568 696d 6964 7974 7000     ature.humidity.p
-   db25c:	6572 7373 7275 0065 6574 706d 7265 7461     ressure.temperat
-   db26c:	7275 2d65 7055 6570 0072 6574 706d 7265     ure-Upper.temper
-   db27c:	7461 7275 2d65 6f6c 6577 0072 7568 696d     ature-lower.humi
-   db28c:	6964 7974 752d 7070 7265 6800 6d75 6469     dity-upper.humid
-   db29c:	7469 2d79 6f6c 6577 0072 654d 7361 7275     ity-lower.Measur
-   db2ac:	2d65 6f4e 0077 6556 6272 736f 2d65 6f4d     e-Now.Verbose-Mo
-   db2bc:	6564 5400 6d65 2d70 7055 6570 2d72 694c     de.Temp-Upper-Li
-   db2cc:	696d 0074 6554 706d 4c2d 776f 7265 4c2d     mit.Temp-Lower-L
-   db2dc:	6d69 7469 4800 6d75 6469 7469 2d79 6f4c     imit.Humidity-Lo
-   db2ec:	6577 2d72 694c 696d 0074 7548 696d 7464     wer-Limit.Humidt
-   db2fc:	2d79 7075 6570 2d72 694c 696d 0074 7245     y-upper-Limit.Er
-   db30c:	6f72 2072 202d 4d42 3645 3038 4920 696e     ror - BME680 Ini
-   db31c:	6974 6c61 7a69 7461 6f69 006e 6146 6c69     tialization.Fail
-   db32c:	6465 7420 206f 6f63 6e6e 6365 0074 7453     ed to connect.St
-   db33c:	7261 7574 0070 2e31 3530 0000               artup.1.05..
+   daf8c:	0000 6554 706d 4d5f 7861 3a20 2520 2e33     ..Temp_Max : %3.
+   daf9c:	6631 5400 6d65 5f70 694d 2078 203a 3325     1f.Temp_Mix : %3
+   dafac:	312e 0066 7548 696d 6964 7974 4d5f 7861     .1f.Humidity_Max
+   dafbc:	203a 3325 312e 0066 7548 696d 6964 7974     : %3.1f.Humidity
+   dafcc:	4d5f 6e69 3a20 2520 2e33 6631 7b00 5422     _Min : %3.1f.{"T
+   dafdc:	6d65 6570 6172 7574 6572 3a22 3425 312e     emperature":%4.1
+   dafec:	2c66 2220 7548 696d 6964 7974 3a22 3425     f, "Humidity":%4
+   daffc:	312e 2c66 2220 7250 7365 7573 6572 3a22     .1f, "Pressure":
+   db00c:	3425 312e 7d66 7300 6f74 6172 6567 662d     %4.1f}.storage-f
+   db01c:	6361 6c69 7469 2d79 6f68 6b6f 4e00 206f     acility-hook.No 
+   db02c:	6144 6174 5500 6962 6f64 7374 4820 6f6f     Data.Ubidots Hoo
+   db03c:	006b 6552 7073 6e6f 6573 5220 6365 6965     k.Response Recei
+   db04c:	6576 0064 7453 7461 0065 3425 312e 2a66     ved.State.%4.1f*
+   db05c:	0043 3425 312e 2566 0025 3425 312e 4866     C.%4.1f%%.%4.1fH
+   db06c:	6150 4600 6961 656c 2064 6f74 7020 7265     Pa.Failed to per
+   db07c:	6f66 6d72 7220 6165 6964 676e 3a20 0028     form reading :(.
+   db08c:	6f4c 0067 227b 6574 706d 7265 7461 7275     Log.{"temperatur
+   db09c:	2265 743a 7572 0065 4c41 5245 2054 5246     e":true.ALERT FR
+   db0ac:	4d4f 4b20 6d75 6176 6f49 3a54 5420 6d65     OM KumvaIoT: Tem
+   db0bc:	6570 6172 7574 6572 5420 7268 7365 6f68     perature Thresho
+   db0cc:	646c 4320 6f72 7373 6465 202e 7543 7272     ld Crossed. Curr
+   db0dc:	6e65 2074 6554 706d 7265 7461 7275 2065     ent Temperature 
+   db0ec:	7369 203a 3425 312e 0066 6d73 2d73 6577     is: %4.1f.sms-we
+   db0fc:	6862 6f6f 006b 6c41 7265 0074 227b 7568     bhook.Alert.{"hu
+   db10c:	696d 6964 7974 3a22 7274 6575 4100 454c     midity":true.ALE
+   db11c:	5452 4620 4f52 204d 754b 766d 4961 546f     RT FROM KumvaIoT
+   db12c:	203a 7548 696d 6964 7974 5420 7268 7365     : Humidity Thres
+   db13c:	6f68 646c 4320 6f72 7373 6465 202e 7543     hold Crossed. Cu
+   db14c:	7272 6e65 2074 7548 696d 6964 7974 6920     rrent Humidity i
+   db15c:	3a73 2520 2e34 6631 6120 646e 4320 7275     s: %4.1f and Cur
+   db16c:	6572 746e 5420 6d65 6570 6172 7574 6572     rent Temperature
+   db17c:	6920 3a73 2520 2e34 6631 5300 7465 5620      is: %4.1f.Set V
+   db18c:	7265 6f62 6573 4d20 646f 0065 0030 6c43     erbose Mode.0.Cl
+   db19c:	6165 6572 2064 6556 6272 736f 2065 6f4d     eared Verbose Mo
+   db1ac:	6564 4600 6f72 206d 7325 7420 206f 7325     de.From %s to %s
+   db1bc:	5300 6174 6574 5420 6172 736e 7469 6f69     .State Transitio
+   db1cc:	006e 7245 6f72 2072 6174 696b 676e 4d20     n.Error taking M
+   db1dc:	6165 7573 6572 656d 746e 0073 7073 7261     easurements.spar
+   db1ec:	2f6b 6564 6976 6563 732f 7365 6973 6e6f     k/device/session
+   db1fc:	652f 646e 4500 7272 726f 5320 6174 6574     /end.Error State
+   db20c:	2d20 5220 7365 7465 5500 7070 7265 5420      - Reset.Upper T
+   db21c:	7268 7365 6f68 646c 5320 7465 4c00 776f     hreshold Set.Low
+   db22c:	7265 5420 7268 7365 6f68 646c 5320 7465     er Threshold Set
+   db23c:	5200 6c65 6165 6573 7400 6d65 6570 6172     .Release.tempera
+   db24c:	7574 6572 6800 6d75 6469 7469 0079 7270     ture.humidity.pr
+   db25c:	7365 7573 6572 7400 6d65 6570 6172 7574     essure.temperatu
+   db26c:	6572 552d 7070 7265 7400 6d65 6570 6172     re-Upper.tempera
+   db27c:	7574 6572 6c2d 776f 7265 6800 6d75 6469     ture-lower.humid
+   db28c:	7469 2d79 7075 6570 0072 7568 696d 6964     ity-upper.humidi
+   db29c:	7974 6c2d 776f 7265 4d00 6165 7573 6572     ty-lower.Measure
+   db2ac:	4e2d 776f 5600 7265 6f62 6573 4d2d 646f     -Now.Verbose-Mod
+   db2bc:	0065 6554 706d 552d 7070 7265 4c2d 6d69     e.Temp-Upper-Lim
+   db2cc:	7469 5400 6d65 2d70 6f4c 6577 2d72 694c     it.Temp-Lower-Li
+   db2dc:	696d 0074 7548 696d 6964 7974 4c2d 776f     mit.Humidity-Low
+   db2ec:	7265 4c2d 6d69 7469 4800 6d75 6469 7974     er-Limit.Humidty
+   db2fc:	752d 7070 7265 4c2d 6d69 7469 4500 7272     -upper-Limit.Err
+   db30c:	726f 2d20 4220 454d 3836 2030 6e49 7469     or - BME680 Init
+   db31c:	6169 696c 617a 6974 6e6f 4600 6961 656c     ialization.Faile
+   db32c:	2064 6f74 6320 6e6f 656e 7463 5300 6174     d to connect.Sta
+   db33c:	7472 7075 3100 302e 0036 0000               rtup.1.06...
 
 000db348 <_ZTVN5spark13CellularClassE>:
 	...

@@ -15,17 +15,15 @@
 // v1.04 - Sent alert to aws to count number of alerts
 // v1.05 - Added a new branch for ubidots handler
 // v1.06 - Added particle variables to show the current threshold values. 
-
+// v1.07 - Testing alerting system for ubidots dashboard
 
 /* 
   Todo : 
-    Add particle function to set the sampling interval.
-    Update the sms string 
     add battery to the payload
 */
 
 
-#define SOFTWARERELEASENUMBER "1.06"                                                        // Keep track of release numbers
+#define SOFTWARERELEASENUMBER "1.07"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "Adafruit_BME680.h"
@@ -102,7 +100,8 @@ char lowerHumidityThresholdString[24];                                          
 // Time Period Related Variables
 static int thresholdTimeStamp;                                                              // Global time vairable
 byte currentHourlyPeriod;                                                                   // This is where we will know if the period changed
-byte currentDailyPeriod;                                                                    // We will keep daily counts as well as period counts
+time_t currentCountTime;                            // Global time vairable
+byte currentMinutePeriod;                           // control timing when using 5-min samp intervals
 
 
 // This section is where we will initialize sensor specific variables, libraries and function prototypes
@@ -111,6 +110,36 @@ double relativeHumidity = 0;
 double pressureHpa = 0;
 double gasResistanceKOhms = 0;
 double approxAltitudeInM = 0;
+
+// Define the memory map - note can be EEPROM or FRAM
+namespace MEM_MAP {                                                                       // Moved to namespace instead of #define to limit scope
+  enum Addresses {
+    versionAddr           = 0x00,                                                         // Where we store the memory map version number - 8 Bits
+    alertCountAddr        = 0x01,                                                         // Where we store our current alert count - 8 Bits
+    resetCountAddr        = 0x02,                                                         // This is where we keep track of how often the Argon was reset - 8 Bits
+    currentCountsTimeAddr = 0x03,                                                         // Time of last report - 32 bits
+    sensorData1Object     = 0x08                                                          // The first data object - where we start writing data
+   };
+};
+
+// Keypad struct for mapping buttons, notes, note values, LED array index, and default color
+struct sensor_data_struct {                                                               // Here we define the structure for collecting and storing data from the sensors
+  bool validData;
+  unsigned long timeStamp;
+  float batteryVoltage;
+  double temperatureInC;
+  double relativeHumidity;
+  float upperTemperatureThreshold;     
+  float lowerTemperatureThreshold;       
+  float upperHumidityThreshold;          
+  float lowerHumidityThreshold;   
+};
+
+sensor_data_struct sensor_data;
+
+
+#define MEMORYMAPVERSION 2                          // Lets us know if we need to reinitialize the memory map
+
 
 void setup()                                                                                // Note: Disconnected Setup()
 {
@@ -265,11 +294,15 @@ void loop()
 
 void sendEvent()
 {
-  char data[256];                     
-  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", temperatureInC, relativeHumidity, pressureHpa);
+  char data[256];           
+   for (int i = 0; i < 4; i++) {
+    sensor_data = EEPROM.get(8 + i*100,sensor_data);                  // This spacing of the objects - 100 - must match what we put in the takeMeasurements() function
+  }          
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", sensor_data.temperatureInC, sensor_data.relativeHumidity);
   Particle.publish("storage-facility-hook", data, PRIVATE);
+  currentCountTime = Time.now();
+  EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
-  currentDailyPeriod = Time.day();
   dataInFlight = true;                                                                      // set the data inflight flag
   webhookTimeStamp = millis();
 }
@@ -306,29 +339,57 @@ void UbidotsHandler(const char *event, const char *data)                        
 bool takeMeasurements() {
 
   // bme.setGasHeater(320, 150);                                                                 // 320*C for 150 ms
+  
+  sensor_data.validData = false;
+
   if (bme.performReading()){
     
-    temperatureInC = bme.temperature;
+    int reportCycle;                                                    // Where are we in the sense and report cycle
+    currentCountTime = Time.now();
+    int currentMinutes = Time.minute();                                // So we only have to check once
+    switch (currentMinutes) {
+      case 15:
+        reportCycle = 0;                                                // This is the first of the sample-only periods
+        break;  
+      case 30:
+        reportCycle = 1;                                                // This is the second of the sample-only periods
+        break; 
+      case 45:
+        reportCycle = 2;                                                // This is the third of the sample-only periods
+        break; 
+      case 0:
+        reportCycle = 3;                                                // This is the fourth of the sample-only periods
+        break; 
+      default:
+        reportCycle = 3;  
+        break;                                                          // just in case
+  }
+
+    sensor_data.temperatureInC = bme.temperature;
     snprintf(temperatureString,sizeof(temperatureString),"%4.1f*C", temperatureInC);
 
-    relativeHumidity = bme.humidity;
+    sensor_data.relativeHumidity = bme.humidity;
     snprintf(humidityString,sizeof(humidityString),"%4.1f%%", relativeHumidity);
 
     pressureHpa = bme.pressure / 100.0;
     snprintf(pressureString,sizeof(pressureString),"%4.1fHPa", pressureHpa);
 
     // If lower temperature threshold is crossed, Set the flag true. 
-    if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
+    if (temperatureInC < sensor_data.lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
 
     // If upper temperature threshold is crossed, Set the flag true. 
-    if (temperatureInC > upperTemperatureThreshold) upperTemperatureThresholdCrossed = true;
+    if (temperatureInC > sensor_data.upperTemperatureThreshold) upperTemperatureThresholdCrossed = true;
 
     // If lower temperature threshold is crossed, Set the flag true. 
-    if (relativeHumidity < lowerHumidityThreshold) lowerHumidityThresholdCrossed = true;
+    if (relativeHumidity < sensor_data.lowerHumidityThreshold) lowerHumidityThresholdCrossed = true;
 
     // If lower temperature threshold is crossed, Set the flag true. 
-    if (temperatureInC < lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
+    if (relativeHumidity > sensor_data.upperHumidityThreshold) upperHumidityThresholdCrossed = true;
 
+    // Indicate that this is a valid data array and store it
+    sensor_data.validData = true;
+    sensor_data.timeStamp = Time.now();
+    EEPROM.put(8 + 100*reportCycle,sensor_data);     
     return 1;
   }                                                                       // Take measurement from all the sensors
   else {
@@ -343,26 +404,26 @@ bool takeMeasurements() {
 
 bool ThresholdCrossed(){
   
-  if ((lowerTemperatureThreshold || upperTemperatureThreshold)!=0){                               // If lower or upper threshold conditions are True. 
+  if ((lowerTemperatureThresholdCrossed || upperTemperatureThresholdCrossed)!=0){                               // If lower or upper threshold conditions are True. 
     char data[32];
-    snprintf(data,sizeof(data),"{\"temperature\":true");
+    snprintf(data,sizeof(data),"{\"alert-temperature\":%4.1f}",temperatureInC);
     BlinkLED(tempLED);                                                                            // Start Blinking LED
-    snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Temperature Threshold Crossed. Current Temperature is: %4.1f",temperatureInC);
-    Particle.publish("sms-webhook",smsString,PRIVATE);                                            // Send the webhook . 
+    // snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Temperature Threshold Crossed. Current Temperature is: %4.1f",temperatureInC);
+    // Particle.publish("sms-webhook",smsString,PRIVATE);                                            // Send the webhook . 
     waitUntil(meterParticlePublish);
-    Particle.publish("Alert",data,PRIVATE);
+    Particle.publish("cc-alert-webhook",data,PRIVATE);
     thresholdCrossAcknowledged = true;                                                            // Once, Published the data. Set all flags to false again . 
   }
 
   if ((upperHumidityThresholdCrossed || lowerHumidityThresholdCrossed)!=0){                       // If lower or upper threshold conditions are True. 
     
-    char data[32];
-    snprintf(data,sizeof(data),"{\"humidity\":true");
+    char humidity_data[32];
+    snprintf(humidity_data,sizeof(humidity_data),"{\"alert-humidity\":%4.1f}",relativeHumidity);
     BlinkLED(HumidityLED);                                                                        // Start Blinking LED
-    snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Humidity Threshold Crossed. Current Humidity is: %4.1f and Current Temperature is: %4.1f",temperatureInC,relativeHumidity);
-    Particle.publish("sms-webhook",smsString,PRIVATE);
+    // snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Humidity Threshold Crossed. Current Humidity is: %4.1f and Current Temperature is: %4.1f",temperatureInC,relativeHumidity);
+    // Particle.publish("sms-webhook",smsString,PRIVATE);
     waitUntil(meterParticlePublish);
-    Particle.publish("Alert",data,PRIVATE);
+    Particle.publish("cc-alert-webhook",humidity_data,PRIVATE);
     thresholdCrossAcknowledged = true; 
   }
 
@@ -468,7 +529,7 @@ bool meterParticlePublish(void)
 
 int setUpperTempLimit(String value)
 {
-  upperTemperatureThreshold = value.toFloat();
+  sensor_data.upperTemperatureThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Upper Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
@@ -477,7 +538,7 @@ int setUpperTempLimit(String value)
 
 int setLowerTempLimit(String value)
 {
-  lowerTemperatureThreshold = value.toFloat();
+  sensor_data.lowerTemperatureThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Lower Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
@@ -488,7 +549,7 @@ int setLowerTempLimit(String value)
 
 int setUpperHumidityLimit(String value)
 {
-  upperHumidityThreshold = value.toFloat();
+  sensor_data.upperHumidityThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Upper Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
@@ -498,7 +559,7 @@ int setUpperHumidityLimit(String value)
 
 int setLowerHumidityLimit(String value)
 {
-  lowerHumidityThreshold = value.toFloat();
+  sensor_data.lowerHumidityThreshold = value.toFloat();
   waitUntil(meterParticlePublish);
   Particle.publish("Lower Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
@@ -507,8 +568,8 @@ int setLowerHumidityLimit(String value)
 
 // This function updates the threshold value string in the console. 
 void updateThresholdValue(){
-    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",upperTemperatureThreshold);
-    snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",lowerTemperatureThreshold);
-    snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",upperHumidityThreshold);
-    snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",lowerHumidityThreshold);
+    snprintf(upperTemperatureThresholdString,sizeof(upperTemperatureThresholdString),"Temp_Max : %3.1f",sensor_data.upperTemperatureThreshold);
+    snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Mix : %3.1f",sensor_data.lowerTemperatureThreshold);
+    snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",sensor_data.upperHumidityThreshold);
+    snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",sensor_data.lowerHumidityThreshold);
 } 
