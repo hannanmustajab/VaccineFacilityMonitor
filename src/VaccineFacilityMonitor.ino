@@ -16,10 +16,11 @@
 // v1.05 - Added a new branch for ubidots handler
 // v1.06 - Added particle variables to show the current threshold values. 
 // v1.07 - Testing alerting system for ubidots dashboard
+// v1.08 - Added EEPROM 
 
 /* 
   Todo : 
-    add battery to the payload
+    Add alerting to EEPROM
 */
 
 
@@ -137,6 +138,7 @@ struct sensor_data_struct {                                                     
 
 sensor_data_struct sensor_data;
 
+se
 
 #define MEMORYMAPVERSION 2                          // Lets us know if we need to reinitialize the memory map
 
