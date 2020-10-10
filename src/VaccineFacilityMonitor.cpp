@@ -22,10 +22,12 @@
 // v1.05 - Added a new branch for ubidots handler
 // v1.06 - Added particle variables to show the current threshold values. 
 // v1.07 - Testing alerting system for ubidots dashboard
+// v1.08 - Added EEPROM 
+// v1.09 - Added SHT31 code support.
 
 /* 
   Todo : 
-    add battery to the payload
+    Add alerting to EEPROM
 */
 
 
@@ -48,18 +50,16 @@ int setLowerTempLimit(String value);
 int setUpperHumidityLimit(String value);
 int setLowerHumidityLimit(String value);
 void updateThresholdValue();
-#line 26 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
-#define SOFTWARERELEASENUMBER "1.07"                                                        // Keep track of release numbers
+#line 28 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
+#define SOFTWARERELEASENUMBER "1.09"                                                        // Keep track of release numbers
 
 // Included Libraries
-#include "Adafruit_BME680.h"
 #include "math.h"
+#include "adafruit-sht31.h"
 
 
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
 
-#define SEALEVELPRESSURE_HPA (1013.25)                                                     // Universal variables
-
-Adafruit_BME680 bme;                                                                       // Instantiate the I2C library
 
 // Prototypes and System Mode calls
 SYSTEM_MODE(SEMI_AUTOMATIC);                                                               // This will enable user code to start executing automatically.
@@ -124,10 +124,10 @@ char upperHumidityThresholdString[24];                                          
 char lowerHumidityThresholdString[24];                                                        // String to show the current threshold readings.                         
 
 // Time Period Related Variables
-static int thresholdTimeStamp;                                                              // Global time vairable
-byte currentHourlyPeriod;                                                                   // This is where we will know if the period changed
-time_t currentCountTime;                            // Global time vairable
-byte currentMinutePeriod;                           // control timing when using 5-min samp intervals
+static int thresholdTimeStamp;                                                                // Global time vairable
+byte currentHourlyPeriod;                                                                     // This is where we will know if the period changed
+time_t currentCountTime;                                                                      // Global time vairable
+byte currentMinutePeriod;                                                                     // control timing when using 5-min samp intervals
 
 
 // This section is where we will initialize sensor specific variables, libraries and function prototypes
@@ -164,11 +164,14 @@ struct sensor_data_struct {                                                     
 sensor_data_struct sensor_data;
 
 
+
 #define MEMORYMAPVERSION 2                          // Lets us know if we need to reinitialize the memory map
 
 
 void setup()                                                                                // Note: Disconnected Setup()
 {
+  Serial.begin(115200);
+  Serial.println("SHT31 test");
   char StartupMessage[64] = "Startup Successful";                                           // Messages from Initialization
   state = IDLE_STATE;
 
@@ -183,7 +186,6 @@ void setup()                                                                    
   Particle.variable("Release",releaseNumber);
   Particle.variable("temperature", temperatureString);
   Particle.variable("humidity", humidityString);
-  Particle.variable("pressure", pressureString);
   Particle.variable("temperature-Upper",upperTemperatureThresholdString);
   Particle.variable("temperature-lower",lowerTemperatureThresholdString);
   Particle.variable("humidity-upper",upperHumidityThresholdString);
@@ -199,19 +201,13 @@ void setup()                                                                    
   // And set the flags from the control register
   // controlRegister = EEPROM.read(MEM_MAP::controlRegisterAddr);                          // Read the Control Register for system modes so they stick even after reset
   // verboseMode     = (0b00001000 & controlRegister);                                     // Set the verboseMode
-  if (!bme.begin()) {                                                                      // Start the BME680 Sensor
+  if (! sht31.begin(0x44)) {                                                                      // Start the BME680 Sensor
     resetTimeStamp = millis();
-    snprintf(StartupMessage,sizeof(StartupMessage),"Error - BME680 Initialization");
+    snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");
+    Serial.println("Couldn't find SHT31");
     state = ERROR_STATE;
     resetTimeStamp = millis();
   }
-
-  // Set up the sampling paramatures
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150); // 320*C for 150 ms
 
   takeMeasurements();                                                                      // For the benefit of monitoring the device
   updateThresholdValue();                                                                  // For checking values of each device
@@ -324,7 +320,7 @@ void sendEvent()
    for (int i = 0; i < 4; i++) {
     sensor_data = EEPROM.get(8 + i*100,sensor_data);                  // This spacing of the objects - 100 - must match what we put in the takeMeasurements() function
   }          
-  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f, \"Pressure\":%4.1f}", sensor_data.temperatureInC, sensor_data.relativeHumidity);
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f}", sensor_data.temperatureInC, sensor_data.relativeHumidity);
   Particle.publish("storage-facility-hook", data, PRIVATE);
   currentCountTime = Time.now();
   EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
@@ -368,7 +364,7 @@ bool takeMeasurements() {
   
   sensor_data.validData = false;
 
-  if (bme.performReading()){
+  if (sht31.readTemperature()){
     
     int reportCycle;                                                    // Where are we in the sense and report cycle
     currentCountTime = Time.now();
@@ -391,14 +387,13 @@ bool takeMeasurements() {
         break;                                                          // just in case
   }
 
-    sensor_data.temperatureInC = bme.temperature;
-    snprintf(temperatureString,sizeof(temperatureString),"%4.1f*C", temperatureInC);
+    sensor_data.temperatureInC = sht31.readTemperature();
+    snprintf(temperatureString,sizeof(temperatureString),"%4.1f*C", sensor_data.temperatureInC);
 
-    sensor_data.relativeHumidity = bme.humidity;
-    snprintf(humidityString,sizeof(humidityString),"%4.1f%%", relativeHumidity);
+    sensor_data.relativeHumidity = sht31.readHumidity();
+    snprintf(humidityString,sizeof(humidityString),"%4.1f%%", sensor_data.relativeHumidity);
 
-    pressureHpa = bme.pressure / 100.0;
-    snprintf(pressureString,sizeof(pressureString),"%4.1fHPa", pressureHpa);
+  
 
     // If lower temperature threshold is crossed, Set the flag true. 
     if (temperatureInC < sensor_data.lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
@@ -420,6 +415,7 @@ bool takeMeasurements() {
   }                                                                       // Take measurement from all the sensors
   else {
         Particle.publish("Log", "Failed to perform reading :(");
+        Serial.println("Failed to take reading!");
         return 0;
 
   }
@@ -462,9 +458,6 @@ bool ThresholdCrossed(){
     upperTemperatureThreshold     = false;
     lowerHumidityThresholdCrossed = false;
   }
-
-
-
   return 1;
 }
 
