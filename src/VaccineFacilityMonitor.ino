@@ -20,13 +20,15 @@
 // v1.09 - Added SHT31 code support.
 // v1.10 - Changed reporting time to 5 minutes from 30. 
 
+
 /* 
   Todo : 
     Add alerting to EEPROM
 */
 
 
-#define SOFTWARERELEASENUMBER "1.09"                                                        // Keep track of release numbers
+
+#define SOFTWARERELEASENUMBER "1.10"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "math.h"
