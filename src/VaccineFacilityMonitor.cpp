@@ -95,6 +95,8 @@ bool dataInFlight = true;
 const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
 byte controlRegister;                                                                       // Stores the control register values
 bool verboseMode=true;                                                                      // Enables more active communications for configutation and setup
+float voltage;                                                                              // Voltage level of the LiPo battery - 3.6-4.2V range
+
 
 // Variables related to alerting on temperature thresholds. 
 
@@ -190,6 +192,8 @@ void setup()                                                                    
   Particle.variable("temperature-lower",lowerTemperatureThresholdString);
   Particle.variable("humidity-upper",upperHumidityThresholdString);
   Particle.variable("humidity-lower",lowerHumidityThresholdString);
+  Particle.variable("Battery", batteryString);                                    // Battery level in V as the Argon does not have a fuel cell
+
   
   Particle.function("Measure-Now",measureNow);
   Particle.function("Verbose-Mode",setVerboseMode);
@@ -393,7 +397,9 @@ bool takeMeasurements() {
     sensor_data.relativeHumidity = sht31.readHumidity();
     snprintf(humidityString,sizeof(humidityString),"%4.1f%%", sensor_data.relativeHumidity);
 
-  
+    // Get battery voltage level
+    // sensor_data.batteryVoltage = analogRead(BATT) * 0.0011224;                   // Voltage level of battery
+    // snprintf(batteryString, sizeof(batteryString), "%4.1fV", sensor_data.batteryVoltage);  // *** Volts not percent
 
     // If lower temperature threshold is crossed, Set the flag true. 
     if (temperatureInC < sensor_data.lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
@@ -592,3 +598,9 @@ void updateThresholdValue(){
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",sensor_data.upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",sensor_data.lowerHumidityThreshold);
 } 
+
+// void getBatteryCharge()
+// {
+//   voltage = analogRead(BATT) * 0.0011224;
+//   snprintf(batteryString, sizeof(batteryString), "%3.1f V", voltage);
+// }

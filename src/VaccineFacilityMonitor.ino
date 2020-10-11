@@ -18,6 +18,7 @@
 // v1.07 - Testing alerting system for ubidots dashboard
 // v1.08 - Added EEPROM 
 // v1.09 - Added SHT31 code support.
+// v1.10 - Changed reporting time to 5 minutes from 30. 
 
 /* 
   Todo : 
@@ -69,6 +70,8 @@ bool dataInFlight = true;
 const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
 byte controlRegister;                                                                       // Stores the control register values
 bool verboseMode=true;                                                                      // Enables more active communications for configutation and setup
+float voltage;                                                                              // Voltage level of the LiPo battery - 3.6-4.2V range
+
 
 // Variables related to alerting on temperature thresholds. 
 
@@ -164,6 +167,8 @@ void setup()                                                                    
   Particle.variable("temperature-lower",lowerTemperatureThresholdString);
   Particle.variable("humidity-upper",upperHumidityThresholdString);
   Particle.variable("humidity-lower",lowerHumidityThresholdString);
+  Particle.variable("Battery", batteryString);                                    // Battery level in V as the Argon does not have a fuel cell
+
   
   Particle.function("Measure-Now",measureNow);
   Particle.function("Verbose-Mode",setVerboseMode);
@@ -206,7 +211,7 @@ void loop()
     static int TimePassed = 0;
     if (verboseMode && state != oldState) publishStateTransition();
    
-    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 30) {
+    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 5) {
       TimePassed = Time.minute();
       state = MEASURING_STATE;                                                     
       }
@@ -214,7 +219,7 @@ void loop()
     else if ((upperTemperatureThresholdCrossed \
     || lowerTemperatureThresholdCrossed \
     || upperHumidityThresholdCrossed \
-    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 5))                 // Send threshold message after every 10 minutes.
+    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 4))                 // Send threshold message after every 10 minutes.
     {
      
       state = THRESHOLD_CROSSED;
@@ -367,7 +372,9 @@ bool takeMeasurements() {
     sensor_data.relativeHumidity = sht31.readHumidity();
     snprintf(humidityString,sizeof(humidityString),"%4.1f%%", sensor_data.relativeHumidity);
 
-  
+    // Get battery voltage level
+    // sensor_data.batteryVoltage = analogRead(BATT) * 0.0011224;                   // Voltage level of battery
+    // snprintf(batteryString, sizeof(batteryString), "%4.1fV", sensor_data.batteryVoltage);  // *** Volts not percent
 
     // If lower temperature threshold is crossed, Set the flag true. 
     if (temperatureInC < sensor_data.lowerTemperatureThreshold) lowerTemperatureThresholdCrossed = true;
@@ -566,3 +573,9 @@ void updateThresholdValue(){
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",sensor_data.upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",sensor_data.lowerHumidityThreshold);
 } 
+
+// void getBatteryCharge()
+// {
+//   voltage = analogRead(BATT) * 0.0011224;
+//   snprintf(batteryString, sizeof(batteryString), "%3.1f V", voltage);
+// }
