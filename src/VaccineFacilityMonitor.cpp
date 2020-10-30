@@ -24,6 +24,9 @@
 // v1.07 - Testing alerting system for ubidots dashboard
 // v1.08 - Added EEPROM 
 // v1.09 - Added SHT31 code support.
+// v1.10 - Changed reporting time to 5 minutes from 30. 
+// v2.00 - Changed reporting time to 15 minutes and added battery support.
+
 
 /* 
   Todo : 
@@ -50,8 +53,13 @@ int setLowerTempLimit(String value);
 int setUpperHumidityLimit(String value);
 int setLowerHumidityLimit(String value);
 void updateThresholdValue();
-#line 28 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
-#define SOFTWARERELEASENUMBER "1.09"                                                        // Keep track of release numbers
+void getBatteryContext();
+#line 31 "/Users/abdulhannanmustajab/Desktop/Projects/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
+PRODUCT_ID(12183);
+PRODUCT_VERSION(2);
+
+
+#define SOFTWARERELEASENUMBER "2.00"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "math.h"
@@ -119,6 +127,7 @@ char temperatureString[16];
 char humidityString[16];
 char altitudeString[16];
 char pressureString[16];
+char batteryContextStr[16];                                                                 // One word that describes whether the device is getting power, charging, discharging or too cold to charge
 char batteryString[16];
 char upperTemperatureThresholdString[24];                                                     // String to show the current threshold readings.                         
 char lowerTemperatureThresholdString[24];                                                     // String to show the current threshold readings.                         
@@ -161,6 +170,7 @@ struct sensor_data_struct {                                                     
   float lowerTemperatureThreshold;       
   float upperHumidityThreshold;          
   float lowerHumidityThreshold;   
+  int stateOfCharge;
 };
 
 sensor_data_struct sensor_data;
@@ -193,6 +203,7 @@ void setup()                                                                    
   Particle.variable("humidity-upper",upperHumidityThresholdString);
   Particle.variable("humidity-lower",lowerHumidityThresholdString);
   Particle.variable("Battery", batteryString);                                    // Battery level in V as the Argon does not have a fuel cell
+  Particle.variable("BatteryContext",batteryContextStr);
 
   
   Particle.function("Measure-Now",measureNow);
@@ -236,7 +247,7 @@ void loop()
     static int TimePassed = 0;
     if (verboseMode && state != oldState) publishStateTransition();
    
-    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 30) {
+    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 15) {
       TimePassed = Time.minute();
       state = MEASURING_STATE;                                                     
       }
@@ -244,7 +255,7 @@ void loop()
     else if ((upperTemperatureThresholdCrossed \
     || lowerTemperatureThresholdCrossed \
     || upperHumidityThresholdCrossed \
-    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 5))                 // Send threshold message after every 10 minutes.
+    || lowerHumidityThresholdCrossed)!= 0 && (Time.minute() - thresholdTimeStamp > 4))                 // Send threshold message after every 10 minutes.
     {
      
       state = THRESHOLD_CROSSED;
@@ -320,11 +331,11 @@ void loop()
 
 void sendEvent()
 {
-  char data[256];           
+  char data[100];           
    for (int i = 0; i < 4; i++) {
     sensor_data = EEPROM.get(8 + i*100,sensor_data);                  // This spacing of the objects - 100 - must match what we put in the takeMeasurements() function
   }          
-  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f}", sensor_data.temperatureInC, sensor_data.relativeHumidity);
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensor_data.temperatureInC, sensor_data.relativeHumidity,sensor_data.stateOfCharge);
   Particle.publish("storage-facility-hook", data, PRIVATE);
   currentCountTime = Time.now();
   EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
@@ -397,6 +408,9 @@ bool takeMeasurements() {
     sensor_data.relativeHumidity = sht31.readHumidity();
     snprintf(humidityString,sizeof(humidityString),"%4.1f%%", sensor_data.relativeHumidity);
 
+    sensor_data.stateOfCharge = int(System.batteryCharge());
+    snprintf(batteryString, sizeof(batteryString), "%i %%", sensor_data.stateOfCharge);
+
     // Get battery voltage level
     // sensor_data.batteryVoltage = analogRead(BATT) * 0.0011224;                   // Voltage level of battery
     // snprintf(batteryString, sizeof(batteryString), "%4.1fV", sensor_data.batteryVoltage);  // *** Volts not percent
@@ -412,6 +426,8 @@ bool takeMeasurements() {
 
     // If lower temperature threshold is crossed, Set the flag true. 
     if (relativeHumidity > sensor_data.upperHumidityThreshold) upperHumidityThresholdCrossed = true;
+
+     getBatteryContext();                   // Check what the battery is doing.
 
     // Indicate that this is a valid data array and store it
     sensor_data.validData = true;
@@ -604,3 +620,11 @@ void updateThresholdValue(){
 //   voltage = analogRead(BATT) * 0.0011224;
 //   snprintf(batteryString, sizeof(batteryString), "%3.1f V", voltage);
 // }
+
+void getBatteryContext() {
+  const char* batteryContext[7] ={"Unknown","Not Charging","Charging","Charged","Discharging","Fault","Diconnected"};
+  // Battery conect information - https://docs.particle.io/reference/device-os/firmware/boron/#batterystate-
+
+  snprintf(batteryContextStr, sizeof(batteryContextStr),"%s", batteryContext[System.batteryState()]);
+
+}
