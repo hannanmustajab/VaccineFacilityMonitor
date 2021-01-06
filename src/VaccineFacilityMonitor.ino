@@ -22,6 +22,7 @@
 // v2.00 - Changed reporting time to 15 minutes and added battery support.
 // v3.00 - Changed payload size to 100 bytes from 256 and turned verbose mode off. 
 // v4.00 - Added product ID version as variable.
+// v4.10 - Testing the sampling period fix.
 
 /* 
   Todo : 
@@ -33,7 +34,7 @@ PRODUCT_ID(12401);
 PRODUCT_VERSION(4);
 
 #define PRODUCT_ID "12401"                                                        // Keep track of release numbers
-#define SOFTWARERELEASENUMBER "4.00"                                                        // Keep track of release numbers
+#define SOFTWARERELEASENUMBER "4.10"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "math.h"
@@ -220,7 +221,7 @@ void loop()
   switch(state) {
   
   case IDLE_STATE:
-   
+  {
     static int TimePassed = 0;
     if (verboseMode && state != oldState) publishStateTransition();
    
@@ -237,6 +238,7 @@ void loop()
      
       state = THRESHOLD_CROSSED;
     }
+  }s
     break;
 
   case THRESHOLD_CROSSED:
