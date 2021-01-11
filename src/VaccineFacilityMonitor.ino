@@ -22,7 +22,8 @@
 // v2.00 - Changed reporting time to 15 minutes and added battery support.
 // v3.00 - Changed payload size to 100 bytes from 256 and turned verbose mode off. 
 // v4.00 - Added product ID version as variable.
-// v4.10 - Testing the sampling period fix.
+// v6.00 - Testing the sampling period fix.
+// v7.00 - Set the sampling period to 20 mins.
 
 /* 
   Todo : 
@@ -30,11 +31,12 @@
 */
 
 
+
 PRODUCT_ID(12401);
-PRODUCT_VERSION(4);
+PRODUCT_VERSION(7); 
 
 #define PRODUCT_ID "12401"                                                        // Keep track of release numbers
-#define SOFTWARERELEASENUMBER "4.10"                                                        // Keep track of release numbers
+#define SOFTWARERELEASENUMBER "7.0"                                                        // Keep track of release numbers
 
 // Included Libraries
 #include "math.h"
@@ -115,7 +117,7 @@ static int thresholdTimeStamp;                                                  
 byte currentHourlyPeriod;                                                                     // This is where we will know if the period changed
 time_t currentCountTime;                                                                      // Global time vairable
 byte currentMinutePeriod;                                                                     // control timing when using 5-min samp intervals
-
+const int wakeBoundary = 0*3600 + 20*60 + 0;         // 0 hour 20 minutes 0 seconds
 
 // This section is where we will initialize sensor specific variables, libraries and function prototypes
 double temperatureInC = 0;
@@ -203,7 +205,6 @@ void setup()                                                                    
 
   takeMeasurements();                                                                      // For the benefit of monitoring the device
   updateThresholdValue();                                                                  // For checking values of each device
-  Check_Available_Credit();
   
   if(!connectToParticle()) {
     state = ERROR_STATE;                                                                   // We failed to connect can reset here or go to the ERROR state for remediation
@@ -222,11 +223,11 @@ void loop()
   
   case IDLE_STATE:
   {
-    static int TimePassed = 0;
+    
     if (verboseMode && state != oldState) publishStateTransition();
    
-    if (Time.hour() != currentHourlyPeriod || Time.minute() - TimePassed >= 15) {
-      TimePassed = Time.minute();
+    
+    if (Time.hour() != currentHourlyPeriod || (!(Time.now() % wakeBoundary))) {
       state = MEASURING_STATE;                                                     
       }
     
@@ -238,7 +239,7 @@ void loop()
      
       state = THRESHOLD_CROSSED;
     }
-  }s
+  }
     break;
 
   case THRESHOLD_CROSSED:
@@ -316,7 +317,6 @@ void sendEvent()
   }          
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensor_data.temperatureInC, sensor_data.relativeHumidity,sensor_data.stateOfCharge);
   Particle.publish("storage-facility-hook", data, PRIVATE);
-  Check_Available_Credit();
   currentCountTime = Time.now();
   EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
@@ -503,7 +503,6 @@ int measureNow(String command) // Function to force sending data in current hour
 {
   if (command == "1") {
     state = MEASURING_STATE;
-    Check_Available_Credit();
     return 1;
   }
   else return 0;
