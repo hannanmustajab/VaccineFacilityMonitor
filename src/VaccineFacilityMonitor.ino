@@ -21,6 +21,7 @@
 // v1.10 - Changed reporting time to 5 minutes from 30. 
 // v2.00 - Changed reporting time to 15 minutes and added battery support.
 // v3.00 - Changed payload size to 100 bytes from 256 and turned verbose mode off. 
+
 // v4.00 - Added product ID version as variable.
 // v6.00 - Testing the sampling period fix.
 // v7.00 - Set the sampling period to 20 mins.
@@ -30,6 +31,7 @@
 // v11.01 - Updated the reporting to send a one character packet every 5 minutes in addition to reporting every 20, moved from EEPROM to FRAM
 // v11.02 - Added a timer to keep the connection alive added clock support as well
 // v11.03 - Initial testing complete - removing comments on keepAlive for testing
+
 
 /* 
   Todo : 
@@ -52,6 +54,7 @@ namespace FRAM {                                                                
    };
 };
 
+<<<<<<< HEAD
 const int FRAMversionNumber = 4;                                                            // Increment this number each time the memory map is changed
 
 struct systemStatus_structure {                     
@@ -78,6 +81,12 @@ struct alertsStatus_structure {
   float upperHumidityThreshold;
   float lowerHumidityThreshold;
 } alertsStatus;
+=======
+
+// Included Libraries
+#include "math.h"
+#include "adafruit-sht31.h"
+>>>>>>> origin/master
 
 struct sensor_data_struct {                                                               // Here we define the structure for collecting and storing data from the sensors
   bool validData;
@@ -122,10 +131,45 @@ volatile bool watchdogFlag=false;                                               
 // Timing Variables
 const unsigned long webhookWait = 45000;                                                    // How long will we wair for a WebHook response
 const unsigned long resetWait   = 300000;                                                   // How long will we wait in ERROR_STATE until reset
+
 unsigned long webhookTimeStamp  = 0;                                                        // Webhooks...
 unsigned long resetTimeStamp    = 0;                                                        // Resets - this keeps you from falling into a reset loop
+<<<<<<< HEAD
 bool dataInFlight = false;
 bool flashTheLED = false;                                                                   // Flag that will flash the LED if any thresholds are crossed
+=======
+
+int sampleRate;                                                                             // Sample rate for idle state.
+time_t t;                                                                                   // Global time vairable
+
+// Program Variables
+int resetCount;                                                                             // Counts the number of times the Electron has had a pin reset
+int alertCount;                                                                             // Keeps track of non-reset issues - think of it as an indication of health
+bool dataInFlight = true;
+const char* releaseNumber = SOFTWARERELEASENUMBER;                                          // Displays the release on the menu
+byte controlRegister;                                                                       // Stores the control register values
+
+bool verboseMode=true;                                                                      // Enables more active communications for configutation and setup
+float voltage;                                                                              // Voltage level of the LiPo battery - 3.6-4.2V range
+const char* productNumber = PRODUCT_ID;                                          // Displays the release on the menu
+
+
+
+// Variables related to alerting on temperature thresholds. 
+
+bool upperTemperatureThresholdCrossed = false;                                                // Set this to true if the upper temp threshold is crossed
+bool lowerTemperatureThresholdCrossed = false;                                                // Set this to true if the lower temp threshold is crossed
+bool upperHumidityThresholdCrossed    = false;                                                // Set this to true if the upper humidty threshold is crossed
+bool lowerHumidityThresholdCrossed    = false;                                                // Set this to true if the lower humidty threshold is crossed
+bool thresholdCrossAcknowledged       = false;                                                // Once  sms is sent, Put all the variables to false again. 
+float upperTemperatureThreshold       = 30;
+float lowerTemperatureThreshold       = 2;
+float upperHumidityThreshold          = 90;
+float lowerHumidityThreshold          = 60;
+char smsString[256];
+
+
+>>>>>>> origin/master
 
 // Variables Related To Particle Mobile Application Reporting
 // Simplifies reading values in the Particle Mobile Application
@@ -141,6 +185,54 @@ bool sysStatusWriteNeeded = false;                                              
 bool alertsStatusWriteNeeded = false;         
 bool sensorDataWriteNeeded = false; 
 
+<<<<<<< HEAD
+=======
+// Time Period Related Variables
+static int thresholdTimeStamp;                                                                // Global time vairable
+int currentHourlyPeriod = 0;                                                      // keep track of when the hour changes
+time_t currentCountTime;                                                                      // Global time vairable
+byte currentMinutePeriod;                                                                     // control timing when using 5-min samp intervals
+const int wakeBoundary = 0*3600 + 20*60 + 0;         // 0 hour 20 minutes 0 seconds
+
+
+// This section is where we will initialize sensor specific variables, libraries and function prototypes
+double temperatureInC = 0;
+double relativeHumidity = 0;
+double pressureHpa = 0;
+double gasResistanceKOhms = 0;
+double approxAltitudeInM = 0;
+
+// Define the memory map - note can be EEPROM or FRAM
+namespace MEM_MAP {                                                                       // Moved to namespace instead of #define to limit scope
+  enum Addresses {
+    versionAddr           = 0x00,                                                         // Where we store the memory map version number - 8 Bits
+    alertCountAddr        = 0x01,                                                         // Where we store our current alert count - 8 Bits
+    resetCountAddr        = 0x02,                                                         // This is where we keep track of how often the Argon was reset - 8 Bits
+    currentCountsTimeAddr = 0x03,                                                         // Time of last report - 32 bits
+    sensorData1Object     = 0x08                                                          // The first data object - where we start writing data
+   };
+};
+
+// Keypad struct for mapping buttons, notes, note values, LED array index, and default color
+struct sensor_data_struct {                                                               // Here we define the structure for collecting and storing data from the sensors
+  bool validData;
+  unsigned long timeStamp;
+  float batteryVoltage;
+  double temperatureInC;
+  double relativeHumidity;
+  float upperTemperatureThreshold;     
+  float lowerTemperatureThreshold;       
+  float upperHumidityThreshold;          
+  float lowerHumidityThreshold;   
+  int stateOfCharge;
+};
+
+sensor_data_struct sensor_data;
+
+
+
+#define MEMORYMAPVERSION 2                          // Lets us know if we need to reinitialize the memory map
+>>>>>>> origin/master
 
 // Time Period Related Variables
 const int wakeBoundary = 0*3600 + 20*60 + 0;                                                // 0 hour 20 minutes 0 seconds
@@ -152,8 +244,18 @@ void setup()                                                                    
   pinMode(donePin,OUTPUT);                                                                  // Allows us to pet the watchdog
   pinMode(blueLED, OUTPUT);                                                                 // declare the Blue LED Pin as an output
 
+<<<<<<< HEAD
   petWatchdog();                                                                            // Pet the watchdog - This will reset the watchdog time period AND 
   attachInterrupt(wakeUpPin, watchdogISR, RISING);                                          // The watchdog timer will signal us and we have to respond
+=======
+  pinMode(wakeUpPin,INPUT);                                                                   // This pin is active HIGH, 
+  pinMode(donePin,OUTPUT);                                                                    // Allows us to pet the watchdog
+
+  petWatchdog();                                                                           // Pet the watchdog - This will reset the watchdog time period AND 
+  attachInterrupt(wakeUpPin, watchdogISR, RISING);                                         // The watchdog timer will signal us and we have to respond
+
+  Particle.keepAlive(120);
+>>>>>>> origin/master
 
   char StartupMessage[64] = "Startup Successful";                                           // Messages from Initialization
   state = INITIALIZATION_STATE;
@@ -185,6 +287,7 @@ void setup()                                                                    
   Particle.function("Keep Alive",setKeepAlive);
   Particle.function("3rd Party Sim", setThirdPartySim);
 
+<<<<<<< HEAD
   rtc.setup();                                                        // Start the real time clock
   rtc.clearAlarm();                                                   // Ensures alarm is still not set from last cycle
 
@@ -192,11 +295,19 @@ void setup()                                                                    
 
 
   if (!sht31.begin(0x44)) {                                                                 // Start the i2c connected SHT-31 sensor
+=======
+
+  Particle.publish("Time",Time.timeStr(Time.now()), PRIVATE);
+
+  if (! sht31.begin(0x44)) {                                                                      // Start the BME680 Sensor
+    resetTimeStamp = millis();
+>>>>>>> origin/master
     snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");
     state = ERROR_STATE;
     resetTimeStamp = millis();
   }
 
+<<<<<<< HEAD
   // Load FRAM and reset variables to their correct values
   fram.begin();                                                                             // Initialize the FRAM module
 
@@ -230,6 +341,11 @@ void setup()                                                                    
   updateThresholdValue();                                                                   // For checking values of each device
 
   if(sysStatus.verboseMode) publishQueue.publish("Startup",StartupMessage,PRIVATE);                       // Let Particle know how the startup process went
+=======
+  takeMeasurements();                                                                      // For the benefit of monitoring the device
+  updateThresholdValue();                                                                  // For checking values of each device
+
+>>>>>>> origin/master
 
   if (state == INITIALIZATION_STATE) state = IDLE_STATE;                                    // We made it throughgo let's go to idle
 }
@@ -237,8 +353,23 @@ void setup()                                                                    
 void loop()
 {
   switch(state) {
+<<<<<<< HEAD
   case IDLE_STATE:                                                                          // Idle state - brackets only needed if a variable is defined in a state    
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
+=======
+  case IDLE_STATE:
+  {
+    
+    if (verboseMode && state != oldState) publishStateTransition();
+   
+
+    if (Time.hour() != currentHourlyPeriod || (!(Time.now() % wakeBoundary))) {
+      state = MEASURING_STATE;                                                     
+      }
+  }
+
+    break;
+>>>>>>> origin/master
 
     if (!(Time.now() % wakeBoundary)) state = MEASURING_STATE;                                                     
     
@@ -376,9 +507,24 @@ void keepAliveMessage() {
 
 void sendEvent()
 {
+<<<<<<< HEAD
   char data[100];                 
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensorData.temperatureInC, sensorData.relativeHumidity,sensorData.stateOfCharge);
   publishQueue.publish("storage-facility-hook", data, PRIVATE);
+=======
+  char data[100];           
+   for (int i = 0; i < 4; i++) {
+    sensor_data = EEPROM.get(8 + i*100,sensor_data);                  // This spacing of the objects - 100 - must match what we put in the takeMeasurements() function
+  }          
+  snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensor_data.temperatureInC, sensor_data.relativeHumidity,sensor_data.stateOfCharge);
+  Particle.publish("storage-facility-hook", data, PRIVATE);
+
+  Particle.publish("Time",Time.timeStr(Time.now()), PRIVATE);
+
+  currentCountTime = Time.now();
+  EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
+  currentHourlyPeriod = Time.hour();                                                        // Change the time period
+>>>>>>> origin/master
   dataInFlight = true;                                                                      // set the data inflight flag
   webhookTimeStamp = millis();
 }
@@ -404,10 +550,12 @@ void UbidotsHandler(const char *event, const char *data)                        
     alertsStatus.lowerHumidityThresholdCrossed = false;
     alertsStatusWriteNeeded = true;
     dataInFlight = false;    
+
   }
   else if (sysStatus.verboseMode) {  
     publishQueue.publish("Ubidots Hook", data, PRIVATE);                              // Publish the response code
   }
+
 
 }
 
@@ -447,10 +595,44 @@ bool takeMeasurements() {
     }
 
     // If lower temperature threshold is crossed, Set the flag true. 
+<<<<<<< HEAD
     if (sensorData.relativeHumidity > alertsStatus.upperHumidityThreshold) {
       alertsStatus.upperHumidityThresholdCrossed = true;
       haveAnyAlertsBeenSet = true;
     }
+=======
+    if (relativeHumidity > sensor_data.upperHumidityThreshold) upperHumidityThresholdCrossed = true;
+     getBatteryContext();                   // Check what the battery is doing.
+
+    // Indicate that this is a valid data array and store it
+    sensor_data.validData = true;
+    sensor_data.timeStamp = Time.now();
+    EEPROM.put(8 + 100*reportCycle,sensor_data);     
+    return 1;
+  }                                                                       // Take measurement from all the sensors
+  else {
+        Particle.publish("Log", "Failed to perform reading :(");
+        Serial.println("Failed to take reading!");
+        return 0;
+
+  }
+ 
+}
+
+// Function to send sms for threshold values
+
+bool ThresholdCrossed(){
+  
+  if ((lowerTemperatureThresholdCrossed || upperTemperatureThresholdCrossed)!=0){                               // If lower or upper threshold conditions are True. 
+    char data[32];
+    snprintf(data,sizeof(data),"{\"alert-temperature\":%4.1f}",temperatureInC);
+
+    // snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Temperature Threshold Crossed. Current Temperature is: %4.1f",temperatureInC);
+    // Particle.publish("sms-webhook",smsString,PRIVATE);                                            // Send the webhook . 
+    waitUntil(meterParticlePublish);
+    Particle.publish("cc-alert-webhook",data,PRIVATE);
+    thresholdCrossAcknowledged = true;                                                            // Once, Published the data. Set all flags to false again . 
+>>>>>>> origin/master
   }
 
     getBatteryContext();                   // Check what the battery is doing.
@@ -605,8 +787,15 @@ void getBatteryContext()
 {
   const char* batteryContext[7] ={"Unknown","Not Charging","Charging","Charged","Discharging","Fault","Diconnected"};
   // Battery conect information - https://docs.particle.io/reference/device-os/firmware/boron/#batterystate-
+<<<<<<< HEAD
   sysStatus.batteryState = System.batteryState();
   snprintf(batteryContextStr, sizeof(batteryContextStr),"%s", batteryContext[sysStatus.batteryState]);
   sysStatusWriteNeeded = true;
+=======
+
+  snprintf(batteryContextStr, sizeof(batteryContextStr),"%s", batteryContext[System.batteryState()]);
+
+
+>>>>>>> origin/master
 }
 
