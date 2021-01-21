@@ -35,6 +35,7 @@
 // v10.00 - Added keepalive .
 // v11.01 - Updated the reporting to send a one character packet every 5 minutes in addition to reporting every 20, moved from EEPROM to FRAM
 // v11.02 - Added a timer to keep the connection alive added clock support as well
+// v11.03 - Initial testing complete - removing comments on keepAlive for testing
 
 /* 
   Todo : 
@@ -67,7 +68,7 @@ int setThirdPartySim(String command);
 int setKeepAlive(String command);
 void updateThresholdValue();
 void getBatteryContext();
-#line 40 "/Users/chipmc/Documents/Maker/Particle/Projects/IDD_Cold-Chain/src/VaccineFacilityMonitor.ino"
+#line 41 "/Users/chipmc/Documents/Maker/Particle/Projects/IDD_Cold-Chain/src/VaccineFacilityMonitor.ino"
 PRODUCT_ID(12401);
 PRODUCT_VERSION(11); 
 const char releaseNumber[8] = "11.02";                                                      // Displays the release on the menu
@@ -158,25 +159,21 @@ bool dataInFlight = false;
 bool flashTheLED = false;                                                                   // Flag that will flash the LED if any thresholds are crossed
 
 // Variables Related To Particle Mobile Application Reporting
-char TVOCString[16];                                                                        // Simplifies reading values in the Particle Mobile Application
+// Simplifies reading values in the Particle Mobile Application
 char temperatureString[16];
 char humidityString[16];
-char altitudeString[16];
-char pressureString[16];
 char batteryContextStr[16];                                                                 // One word that describes whether the device is getting power, charging, discharging or too cold to charge
 char batteryString[16];
 char upperTemperatureThresholdString[24];                                                   // String to show the current threshold readings.                         
 char lowerTemperatureThresholdString[24];                                                   // String to show the current threshold readings.                         
 char upperHumidityThresholdString[24];                                                      // String to show the current threshold readings.                         
 char lowerHumidityThresholdString[24];                                                      // String to show the current threshold readings.       
-bool systemStatusWriteNeeded = false;                                                       // Keep track of when we need to write
+bool sysStatusWriteNeeded = false;                                                       // Keep track of when we need to write
 bool alertsStatusWriteNeeded = false;         
 bool sensorDataWriteNeeded = false; 
 
 
 // Time Period Related Variables
-int currentHourlyPeriod;                                                                    // keep track of when the hour changes
-int currentMinutePeriod;                                                                    // keep track of the minute
 const int wakeBoundary = 0*3600 + 20*60 + 0;                                                // 0 hour 20 minutes 0 seconds
 const int keepAliveBoundary = 0*3600 + 5*60 +0;                                             // How often do we need to send a ping to keep the connection alive - start with 5 minutes - *** related to keepAlive value in Setup()! ***
 
@@ -207,6 +204,7 @@ void setup()                                                                    
   Particle.variable("Battery", batteryString);                                              // Battery level in V as the Argon does not have a fuel cell
   Particle.variable("BatteryContext",batteryContextStr);
   Particle.variable("Keep Alive Sec",sysStatus.keepAlive);
+  Particle.variable("3rd Party Sim", sysStatus.thirdPartySim);
 
   
   Particle.function("Measure-Now",measureNow);
@@ -254,7 +252,8 @@ void setup()                                                                    
   checkAlertsValues();                                                                      // Make sure that Alerts values are all in a valid range
 
   if (sysStatus.thirdPartySim) {
-    //Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
+    waitUntil(Particle.connected); 
+    Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
     keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
   }
 
@@ -272,16 +271,15 @@ void loop()
   case IDLE_STATE:                                                                          // Idle state - brackets only needed if a variable is defined in a state    
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
 
-    if (Time.hour() != currentHourlyPeriod || (!(Time.now() % wakeBoundary))) {
-      state = MEASURING_STATE;                                                     
-    }
+    if (!(Time.now() % wakeBoundary)) state = MEASURING_STATE;                                                     
+    
     break;
 
   case MEASURING_STATE:                                                                     // Take measurements prior to sending
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
-    currentHourlyPeriod = Time.hour();
 
     if (takeMeasurements()) flashTheLED = true;
+
     else {
       flashTheLED = false;
       digitalWrite(blueLED,LOW);                                                            // Just in case it was on an on-flash
@@ -290,8 +288,8 @@ void loop()
     state = REPORTING_STATE;
     break;
 
-  case REPORTING_STATE:
-    if (sysStatus.verboseMode && state != oldState) publishStateTransition();                         // Reporting - hourly or on command
+  case REPORTING_STATE: 
+    if (sysStatus.verboseMode && state != oldState) publishStateTransition();               // Reporting - hourly or on command
     if (Particle.connected()) {
       if (Time.hour() == 12) Particle.syncTime();                                           // Set the clock each day at noon
       sendEvent();                                                                          // Send data to Ubidots
@@ -305,7 +303,8 @@ void loop()
 
   case RESP_WAIT_STATE:
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
-    if (!dataInFlight)                                                                      // Response received back to IDLE state
+
+    if (!dataInFlight && (Time.now() % wakeBoundary))                                       // Response received back to IDLE state - make sure we don't allow repetivie reporting events
     {
      state = IDLE_STATE;
     }
@@ -319,7 +318,7 @@ void loop()
 
   
   case ERROR_STATE:                                                                         // To be enhanced - where we deal with errors
-    if (sysStatus.verboseMode && state != oldState) publishStateTransition();
+    if (state != oldState) publishStateTransition();
     if (millis() > resetTimeStamp + resetWait)
     {
       if (Particle.connected()) publishQueue.publish("State","Error State - Reset", PRIVATE); // Brodcast Reset Action
@@ -335,9 +334,9 @@ void loop()
 
   if (flashTheLED) blinkLED(blueLED);
 
-  if (systemStatusWriteNeeded) {
+  if (sysStatusWriteNeeded) {
     fram.put(FRAM::sysStatusAddr,sysStatus);
-    systemStatusWriteNeeded = false;
+    sysStatusWriteNeeded = false;
   }
   if (alertsStatusWriteNeeded) {
     fram.put(FRAM::alertStatusAddr,alertsStatus);
@@ -379,7 +378,7 @@ void checkSystemValues() {                                          // Checks to
   if (sysStatus.verboseMode < 0 || sysStatus.verboseMode > 1) sysStatus.verboseMode = false;
   if (sysStatus.lowBatteryMode < 0 || sysStatus.lowBatteryMode > 1) sysStatus.lowBatteryMode = 0;
   if (sysStatus.resetCount < 0 || sysStatus.resetCount > 255) sysStatus.resetCount = 0;
-  systemStatusWriteNeeded = true;
+  sysStatusWriteNeeded = true;
 }
 
 void checkAlertsValues() {                                          // Checks to ensure that all system values are in reasonable range 
@@ -403,7 +402,7 @@ void petWatchdog()
 }
 
 void keepAliveMessage() {
-  Particle.publish(" ", PRIVATE,NO_ACK);
+  Particle.publish("*", PRIVATE,NO_ACK);
 }
 
 void sendEvent()
@@ -411,14 +410,13 @@ void sendEvent()
   char data[100];                 
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensorData.temperatureInC, sensorData.relativeHumidity,sensorData.stateOfCharge);
   publishQueue.publish("storage-facility-hook", data, PRIVATE);
-  currentHourlyPeriod = Time.hour();                                                        // Change the time period
   dataInFlight = true;                                                                      // set the data inflight flag
   webhookTimeStamp = millis();
 }
 
 void UbidotsHandler(const char *event, const char *data)                                    // Looks at the response from Ubidots - Will reset Photon if no successful response
 {                                                                                           // Response Template: "{{hourly.0.status_code}}" so, I should only get a 3 digit number back
-    // Response Template: "{{hourly.0.status_code}}"
+  // Response Template: "{{hourly.0.status_code}}"
   if (!data) {                                                                    // First check to see if there is any data
     if (sysStatus.verboseMode) {
       publishQueue.publish("Ubidots Hook", "No Data", PRIVATE);
@@ -430,7 +428,6 @@ void UbidotsHandler(const char *event, const char *data)                        
   {
     if (sysStatus.verboseMode) {
       publishQueue.publish("State", "Response Received", PRIVATE);
-      
     }
     alertsStatus.upperHumidityThresholdCrossed = false;
     alertsStatus.lowerHumidityThresholdCrossed = false;
@@ -508,7 +505,6 @@ void blinkLED(int LED)                                            // Non-blockin
     digitalWrite(LED,!digitalRead(LED));
     lastStateChange = millis();
   }
-
 }
 
 // These are the particle functions that allow you to configure and run the device
@@ -531,14 +527,14 @@ int setVerboseMode(String command) // Function to force sending data in current 
   {
     sysStatus.verboseMode = true;
     publishQueue.publish("Mode","Set Verbose Mode",PRIVATE);
-    systemStatusWriteNeeded = true;
+    sysStatusWriteNeeded = true;
     return 1;
   }
   else if (command == "0")
   {
     sysStatus.verboseMode = false;
     publishQueue.publish("Mode","Cleared Verbose Mode",PRIVATE);
-    systemStatusWriteNeeded = true;
+    sysStatusWriteNeeded = true;
     return 1;
   }
   else return 0;
@@ -550,10 +546,7 @@ void publishStateTransition(void)
   char stateTransitionString[40];
   snprintf(stateTransitionString, sizeof(stateTransitionString), "From %s to %s", stateNames[oldState],stateNames[state]);
   oldState = state;
-  if(Particle.connected()) {
-    publishQueue.publish("State Transition",stateTransitionString, PRIVATE);
-  }
-  Serial.println(stateTransitionString);
+  if(Particle.connected()) publishQueue.publish("State Transition",stateTransitionString, PRIVATE);
 }
 
 // These function will allow to change the upper and lower limits for alerting the customer. 
@@ -571,7 +564,6 @@ int setLowerTempLimit(String value)
   alertsStatus.lowerTemperatureThreshold = value.toFloat();
   publishQueue.publish("Lower Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
-
   return 1;
 
 }
@@ -581,7 +573,6 @@ int setUpperHumidityLimit(String value)
   alertsStatus.upperHumidityThreshold = value.toFloat();
   publishQueue.publish("Upper Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
-
   return 1;
 }
 
@@ -598,17 +589,17 @@ int setThirdPartySim(String command) // Function to force sending data in curren
   if (command == "1")
   {
     sysStatus.thirdPartySim = true;
-    systemStatusWriteNeeded = true;
-    //Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
+    Particle.keepAlive(sysStatus.keepAlive);                                                // Set the keep alive value
     keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
     if (Particle.connected()) publishQueue.publish("Mode","Set to 3rd Party Sim", PRIVATE);
+    sysStatusWriteNeeded = true;
     return 1;
   }
   else if (command == "0")
   {
     sysStatus.thirdPartySim = false;
-    systemStatusWriteNeeded = true;
     if (Particle.connected()) publishQueue.publish("Mode","Set to Particle Sim", PRIVATE);
+    sysStatusWriteNeeded = true;
     return 1;
   }
   else return 0;
@@ -619,14 +610,14 @@ int setKeepAlive(String command)
 {
   char * pEND;
   char data[256];
-  int tempTime = strtol(command,&pEND,10);                                    // Looks for the first integer and interprets it
-  if ((tempTime < 0) || (tempTime > 1200)) return 0;                            // Make sure it falls in a valid range or send a "fail" result
+  int tempTime = strtol(command,&pEND,10);                                                  // Looks for the first integer and interprets it
+  if ((tempTime < 0) || (tempTime > 1200)) return 0;                                        // Make sure it falls in a valid range or send a "fail" result
   sysStatus.keepAlive = tempTime;
-  systemStatusWriteNeeded = true;                                            // Need to store to FRAM back in the main loop
   if (Particle.connected()) {
     snprintf(data, sizeof(data), "Keep Alive set to %i sec",sysStatus.keepAlive);
     publishQueue.publish("Keep Alive",data, PRIVATE);
   }
+  sysStatusWriteNeeded = true;                                                           // Need to store to FRAM back in the main loop
   return 1;
 }
 
@@ -637,7 +628,7 @@ void updateThresholdValue()
     snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Min : %3.1f",alertsStatus.lowerTemperatureThreshold);
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",alertsStatus.upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",alertsStatus.lowerHumidityThreshold);
-    alertsStatusWriteNeeded = true;
+    alertsStatusWriteNeeded = true;                                                         // This function is called when there is a change so, we need to update the FRAM
 } 
 
 
@@ -645,7 +636,8 @@ void getBatteryContext()
 {
   const char* batteryContext[7] ={"Unknown","Not Charging","Charging","Charged","Discharging","Fault","Diconnected"};
   // Battery conect information - https://docs.particle.io/reference/device-os/firmware/boron/#batterystate-
-
-  snprintf(batteryContextStr, sizeof(batteryContextStr),"%s", batteryContext[System.batteryState()]);
+  sysStatus.batteryState = System.batteryState();
+  snprintf(batteryContextStr, sizeof(batteryContextStr),"%s", batteryContext[sysStatus.batteryState]);
+  sysStatusWriteNeeded = true;
 }
 
