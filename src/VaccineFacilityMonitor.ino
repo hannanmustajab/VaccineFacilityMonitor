@@ -27,8 +27,8 @@
 // v8.00 - Testing the sampling period fix. 
 // v9.00 - Added watchdog support and changed from semi automatic to automatic. 
 // v10.00 - Added keepalive .
-// v11.00 - Updated the reporting to send a one character packet every 5 minutes in addition to reporting every 20, moved from EEPROM to FRAM
-
+// v11.01 - Updated the reporting to send a one character packet every 5 minutes in addition to reporting every 20, moved from EEPROM to FRAM
+// v11.02 - Added a timer to keep the connection alive added clock support as well
 
 /* 
   Todo : 
@@ -39,7 +39,7 @@
 
 PRODUCT_ID(12401);
 PRODUCT_VERSION(11); 
-const char releaseNumber[8] = "11.01";                                                      // Displays the release on the menu
+const char releaseNumber[8] = "11.02";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
@@ -51,14 +51,14 @@ namespace FRAM {                                                                
    };
 };
 
-const int FRAMversionNumber = 3;                                                            // Increment this number each time the memory map is changed
+const int FRAMversionNumber = 4;                                                            // Increment this number each time the memory map is changed
 
 struct systemStatus_structure {                     
   uint8_t structuresVersion;                                                                // Version of the data structures (system and data)
-  uint8_t placeholder;                                                                      // available for future use
+  bool thirdPartySim;                                                                       // If this is set to "true" then the keep alive code will be executed
+  int keepAlive;                                                                            // Keep alive value for use with 3rd part SIMs
   uint8_t connectedStatus;
   uint8_t verboseMode;
-  uint8_t lowPowerMode;
   uint8_t lowBatteryMode;
   int stateOfCharge;                                                                        // Battery charge level
   uint8_t batteryState;                                                                     // Stores the current battery state
@@ -92,6 +92,7 @@ struct sensor_data_struct {                                                     
 #include "adafruit-sht31.h"
 #include "PublishQueueAsyncRK.h"                                                            // Async Particle Publish
 #include "MB85RC256V-FRAM-RK.h"                                                             // Rickkas Particle based FRAM Library
+#include "MCP79410RK.h"                                                                     // Real Time Clock
 
 // Prototypes and System Mode calls
 SYSTEM_MODE(AUTOMATIC);                                                                     // This will enable user code to start executing automatically.
@@ -99,8 +100,10 @@ SYSTEM_THREAD(ENABLED);                                                         
 STARTUP(System.enableFeature(FEATURE_RESET_INFO));
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
 MB85RC64 fram(Wire, 0);                                                                     // Rickkas' FRAM library
+MCP79410 rtc;                                                                               // Rickkas MCP79410 libarary
 retained uint8_t publishQueueRetainedBuffer[2048];                                          // Create a buffer in FRAM for cached publishes
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
+Timer keepAliveTimer(1000, keepAliveMessage);
 
 // State Machine Variables
 enum State { INITIALIZATION_STATE, ERROR_STATE, IDLE_STATE, MEASURING_STATE, REPORTING_STATE, RESP_WAIT_STATE};
@@ -148,14 +151,12 @@ const int keepAliveBoundary = 0*3600 + 5*60 +0;                                 
 
 void setup()                                                                                // Note: Disconnected Setup()
 {
-  pinMode(wakeUpPin,INPUT);                                                                   // This pin is active HIGH, 
-  pinMode(donePin,OUTPUT);                                                                    // Allows us to pet the watchdog
-  pinMode(blueLED, OUTPUT);                                                             // declare the Blue LED Pin as an output
+  pinMode(wakeUpPin,INPUT);                                                                 // This pin is active HIGH, 
+  pinMode(donePin,OUTPUT);                                                                  // Allows us to pet the watchdog
+  pinMode(blueLED, OUTPUT);                                                                 // declare the Blue LED Pin as an output
 
-  petWatchdog();                                                                           // Pet the watchdog - This will reset the watchdog time period AND 
-  attachInterrupt(wakeUpPin, watchdogISR, RISING);                                         // The watchdog timer will signal us and we have to respond
-
-  //Particle.keepAlive(120);                                                                // Uncomment when using with 3rd Party SIMs.  Need to match this value to the keepAliveBoundary interval
+  petWatchdog();                                                                            // Pet the watchdog - This will reset the watchdog time period AND 
+  attachInterrupt(wakeUpPin, watchdogISR, RISING);                                          // The watchdog timer will signal us and we have to respond
 
   char StartupMessage[64] = "Startup Successful";                                           // Messages from Initialization
   state = INITIALIZATION_STATE;
@@ -174,6 +175,7 @@ void setup()                                                                    
   Particle.variable("humidity-lower",lowerHumidityThresholdString);
   Particle.variable("Battery", batteryString);                                              // Battery level in V as the Argon does not have a fuel cell
   Particle.variable("BatteryContext",batteryContextStr);
+  Particle.variable("Keep Alive Sec",sysStatus.keepAlive);
 
   
   Particle.function("Measure-Now",measureNow);
@@ -182,9 +184,15 @@ void setup()                                                                    
   Particle.function("Temp-Lower-Limit",setLowerTempLimit);
   Particle.function("Humidity-Lower-Limit",setLowerHumidityLimit);
   Particle.function("Humidty-upper-Limit",setUpperHumidityLimit);
+  Particle.function("Keep Alive",setKeepAlive);
+  Particle.function("3rd Party Sim", setThirdPartySim);
+
+  rtc.setup();                                                        // Start the real time clock
+  rtc.clearAlarm();                                                   // Ensures alarm is still not set from last cycle
 
   publishQueue.publish("Time",Time.timeStr(Time.now()), PRIVATE);
-  
+
+
   if (!sht31.begin(0x44)) {                                                                 // Start the i2c connected SHT-31 sensor
     snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");
     state = ERROR_STATE;
@@ -213,6 +221,11 @@ void setup()                                                                    
 
   checkSystemValues();                                                                      // Make sure System values are all in valid range
   checkAlertsValues();                                                                      // Make sure that Alerts values are all in a valid range
+
+  if (sysStatus.thirdPartySim) {
+    //Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
+    keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+  }
 
   takeMeasurements();                                                                       // For the benefit of monitoring the device
   updateThresholdValue();                                                                   // For checking values of each device
@@ -261,14 +274,14 @@ void loop()
 
   case RESP_WAIT_STATE:
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
-    if (!dataInFlight)                                                // Response received back to IDLE state
+    if (!dataInFlight)                                                                      // Response received back to IDLE state
     {
      state = IDLE_STATE;
     }
-    else if (millis() - webhookTimeStamp > webhookWait) {             // If it takes too long - will need to reset
+    else if (millis() - webhookTimeStamp > webhookWait) {                                   // If it takes too long - will need to reset
       resetTimeStamp = millis();
-      publishQueue.publish("spark/device/session/end", "", PRIVATE);      // If the device times out on the Webhook response, it will ensure a new session is started on next connect
-      state = ERROR_STATE;                                            // Response timed out
+      publishQueue.publish("spark/device/session/end", "", PRIVATE);                        // If the device times out on the Webhook response, it will ensure a new session is started on next connect
+      state = ERROR_STATE;                                                                  // Response timed out
       resetTimeStamp = millis();
     }
     break;
@@ -278,14 +291,16 @@ void loop()
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
     if (millis() > resetTimeStamp + resetWait)
     {
-      if (Particle.connected()) publishQueue.publish("State","Error State - Reset", PRIVATE);    // Brodcast Reset Action
+      if (Particle.connected()) publishQueue.publish("State","Error State - Reset", PRIVATE); // Brodcast Reset Action
       delay(2000);
       System.reset();
     }
     break;
   }
 
-  if (watchdogFlag) petWatchdog();                                                           // Watchdog flag is raised - time to pet the watchdog
+  rtc.loop();                                                                               // keeps the clock up to date
+
+  if (watchdogFlag) petWatchdog();                                                          // Watchdog flag is raised - time to pet the watchdog
 
   if (flashTheLED) blinkLED(blueLED);
 
@@ -307,6 +322,8 @@ void loop()
 
 void loadSystemDefaults() {                                         // Default settings for the device - connected, not-low power and always on
   if (Particle.connected()) publishQueue.publish("Mode","Loading System Defaults", PRIVATE);
+  sysStatus.thirdPartySim = 0;
+  sysStatus.keepAlive = 600;
   sysStatus.structuresVersion = 1;
   sysStatus.verboseMode = false;
   sysStatus.lowBatteryMode = false;
@@ -327,6 +344,7 @@ void checkSystemValues() {                                          // Checks to
     if (Particle.connected()) sysStatus.connectedStatus = true;
     else sysStatus.connectedStatus = false;
   }
+  if (sysStatus.keepAlive < 0 || sysStatus.keepAlive > 1200) sysStatus.keepAlive = 600;
   if (sysStatus.verboseMode < 0 || sysStatus.verboseMode > 1) sysStatus.verboseMode = false;
   if (sysStatus.lowBatteryMode < 0 || sysStatus.lowBatteryMode > 1) sysStatus.lowBatteryMode = 0;
   if (sysStatus.resetCount < 0 || sysStatus.resetCount > 255) sysStatus.resetCount = 0;
@@ -353,6 +371,10 @@ void petWatchdog()
   watchdogFlag = false;
 }
 
+void keepAliveMessage() {
+  Particle.publish(" ", PRIVATE,NO_ACK);
+}
+
 void sendEvent()
 {
   char data[100];                 
@@ -365,7 +387,7 @@ void sendEvent()
 
 void UbidotsHandler(const char *event, const char *data)                                    // Looks at the response from Ubidots - Will reset Photon if no successful response
 {                                                                                           // Response Template: "{{hourly.0.status_code}}" so, I should only get a 3 digit number back
-    // Response Template: "{{hourly.0.status_code}}"
+  // Response Template: "{{hourly.0.status_code}}"
   if (!data) {                                                                    // First check to see if there is any data
     if (sysStatus.verboseMode) {
       publishQueue.publish("Ubidots Hook", "No Data", PRIVATE);
@@ -445,17 +467,6 @@ bool takeMeasurements() {
     return haveAnyAlertsBeenSet;
 }
 
-bool disconnectFromParticle()
-{
-  Particle.disconnect();                                          // Otherwise Electron will attempt to reconnect on wake
-  delay(1000);                                                    // Bummer but only should happen once an hour
-  return true;
-}
-
-bool notConnected() {
-  return !Particle.connected();                             // This is a requirement to use waitFor
-}
-
 // Function to Blink the LED for alerting. 
 void blinkLED(int LED)                                            // Non-blocking LED flashing routine
 {
@@ -466,7 +477,6 @@ void blinkLED(int LED)                                            // Non-blockin
     digitalWrite(LED,!digitalRead(LED));
     lastStateChange = millis();
   }
-
 }
 
 // These are the particle functions that allow you to configure and run the device
@@ -489,13 +499,14 @@ int setVerboseMode(String command) // Function to force sending data in current 
   {
     sysStatus.verboseMode = true;
     publishQueue.publish("Mode","Set Verbose Mode",PRIVATE);
-    
+    systemStatusWriteNeeded = true;
     return 1;
   }
   else if (command == "0")
   {
     sysStatus.verboseMode = false;
     publishQueue.publish("Mode","Cleared Verbose Mode",PRIVATE);
+    systemStatusWriteNeeded = true;
     return 1;
   }
   else return 0;
@@ -528,7 +539,6 @@ int setLowerTempLimit(String value)
   alertsStatus.lowerTemperatureThreshold = value.toFloat();
   publishQueue.publish("Lower Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
-
   return 1;
 
 }
@@ -538,7 +548,6 @@ int setUpperHumidityLimit(String value)
   alertsStatus.upperHumidityThreshold = value.toFloat();
   publishQueue.publish("Upper Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
-
   return 1;
 }
 
@@ -550,6 +559,43 @@ int setLowerHumidityLimit(String value)
   return 1;
 }
 
+int setThirdPartySim(String command) // Function to force sending data in current hour
+{
+  if (command == "1")
+  {
+    sysStatus.thirdPartySim = true;
+    systemStatusWriteNeeded = true;
+    //Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
+    keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+    if (Particle.connected()) publishQueue.publish("Mode","Set to 3rd Party Sim", PRIVATE);
+    return 1;
+  }
+  else if (command == "0")
+  {
+    sysStatus.thirdPartySim = false;
+    systemStatusWriteNeeded = true;
+    if (Particle.connected()) publishQueue.publish("Mode","Set to Particle Sim", PRIVATE);
+    return 1;
+  }
+  else return 0;
+}
+
+
+int setKeepAlive(String command)
+{
+  char * pEND;
+  char data[256];
+  int tempTime = strtol(command,&pEND,10);                                    // Looks for the first integer and interprets it
+  if ((tempTime < 0) || (tempTime > 1200)) return 0;                            // Make sure it falls in a valid range or send a "fail" result
+  sysStatus.keepAlive = tempTime;
+  systemStatusWriteNeeded = true;                                            // Need to store to FRAM back in the main loop
+  if (Particle.connected()) {
+    snprintf(data, sizeof(data), "Keep Alive set to %i sec",sysStatus.keepAlive);
+    publishQueue.publish("Keep Alive",data, PRIVATE);
+  }
+  return 1;
+}
+
 // This function updates the threshold value string in the console. 
 void updateThresholdValue()
 {
@@ -557,6 +603,7 @@ void updateThresholdValue()
     snprintf(lowerTemperatureThresholdString,sizeof(lowerTemperatureThresholdString),"Temp_Min : %3.1f",alertsStatus.lowerTemperatureThreshold);
     snprintf(upperHumidityThresholdString,sizeof(upperHumidityThresholdString),"Humidity_Max: %3.1f",alertsStatus.upperHumidityThreshold);
     snprintf(lowerHumidityThresholdString,sizeof(lowerHumidityThresholdString),"Humidity_Min : %3.1f",alertsStatus.lowerHumidityThreshold);
+    alertsStatusWriteNeeded = true;
 } 
 
 
