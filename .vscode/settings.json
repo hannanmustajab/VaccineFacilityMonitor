@@ -6,9 +6,6 @@
         "*.ino": "cpp"
     },
     "particle.targetPlatform": "boron",
-<<<<<<< HEAD
-    "particle.targetDevice": "Rwanda-Dev-002"
-=======
-    "particle.firmwareVersion": "2.0.0-rc.3"
->>>>>>> origin/master
+    "particle.targetDevice": "Rwanda-Dev-002",
+    "particle.firmwareVersion": "2.0.1"
 }
