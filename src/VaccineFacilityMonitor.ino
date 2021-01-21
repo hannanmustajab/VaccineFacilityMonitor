@@ -30,6 +30,7 @@
 // v11.01 - Updated the reporting to send a one character packet every 5 minutes in addition to reporting every 20, moved from EEPROM to FRAM
 // v11.02 - Added a timer to keep the connection alive added clock support as well
 // v11.03 - Initial testing complete - removing comments on keepAlive for testing
+// v12.00 - Pushed to repo - moving to Particle for dissemination
 
 
 /* 
@@ -40,8 +41,8 @@
 
 
 PRODUCT_ID(12401);
-PRODUCT_VERSION(11); 
-const char releaseNumber[8] = "11.03";                                                      // Displays the release on the menu
+PRODUCT_VERSION(12); 
+const char releaseNumber[8] = "12.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope

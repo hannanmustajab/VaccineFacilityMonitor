@@ -2342,7 +2342,7 @@ struct __ApplicationProductVersion {
    d5108:	f002 ff1c 	bl	d7f44 <spark_protocol_instance>
    d510c:	2300      	movs	r3, #0
    d510e:	461a      	mov	r2, r3
-   d5110:	210b      	movs	r1, #11
+   d5110:	210c      	movs	r1, #12
    d5112:	f002 ff27 	bl	d7f64 <spark_protocol_set_product_firmware_version>
    d5116:	2500      	movs	r5, #0
     SleepResult() {}
@@ -15054,7 +15054,7 @@ TwoWire& __fetch_global_Wire()
 	...
 
 000dae20 <_ZL13releaseNumber>:
-   dae20:	3131 302e 0032 0000                         11.02...
+   dae20:	3231 302e 0030 0000                         12.00...
 
 000dae28 <_ZL17FRAMversionNumber>:
    dae28:	0004 0000 7277 7469 4465 7461 2061 6166     ....writeData fa
