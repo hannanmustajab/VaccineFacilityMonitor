@@ -33,6 +33,7 @@
 // v8.00 - Testing the sampling period fix. 
 // v9.00 - 
 
+
 /* 
   Todo : 
     Add alerting to EEPROM
@@ -61,12 +62,14 @@ int setUpperHumidityLimit(String value);
 int setLowerHumidityLimit(String value);
 void updateThresholdValue();
 void getBatteryContext();
+
 #line 37 "/Users/abdulhannanmustajab/Desktop/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
 PRODUCT_ID(12401);
 PRODUCT_VERSION(8); 
 
 #define PRODUCT_ID "12401"                                                        // Keep track of release numbers
 #define SOFTWARERELEASENUMBER "8.0"                                                        // Keep track of release numbers
+
 
 // Included Libraries
 #include "math.h"
@@ -102,8 +105,10 @@ volatile bool watchdogFlag;                                                     
 int publishInterval;                                                                        // Publish interval for sending data. 
 const unsigned long webhookWait = 45000;                                                    // How long will we wair for a WebHook response
 const unsigned long resetWait   = 300000;                                                   // How long will we wait in ERROR_STATE until reset
+
 unsigned long webhookTimeStamp  = 0;                                                        // Webhooks...
 unsigned long resetTimeStamp    = 0;                                                        // Resets - this keeps you from falling into a reset loop
+
 int sampleRate;                                                                             // Sample rate for idle state.
 time_t t;                                                                                   // Global time vairable
 
@@ -116,6 +121,8 @@ byte controlRegister;                                                           
 bool verboseMode=false;                                                                      // Enables more active communications for configutation and setup
 float voltage;                                                                              // Voltage level of the LiPo battery - 3.6-4.2V range
 const char* productNumber = PRODUCT_ID;                                          // Displays the release on the menu
+
+
 
 
 // Variables related to alerting on temperature thresholds. 
@@ -152,6 +159,7 @@ int currentHourlyPeriod = 0;                                                    
 time_t currentCountTime;                                                                      // Global time vairable
 byte currentMinutePeriod;                                                                     // control timing when using 5-min samp intervals
 const int wakeBoundary = 0*3600 + 20*60 + 0;         // 0 hour 20 minutes 0 seconds
+
 
 // This section is where we will initialize sensor specific variables, libraries and function prototypes
 double temperatureInC = 0;
@@ -197,13 +205,11 @@ void setup()                                                                    
   Serial.begin(115200);
   Serial.println("SHT31 test");
 
-
   pinMode(wakeUpPin,INPUT);                                                                   // This pin is active HIGH, 
   pinMode(donePin,OUTPUT);                                                                    // Allows us to pet the watchdog
 
   petWatchdog();                                                                           // Pet the watchdog - This will reset the watchdog time period AND 
   attachInterrupt(wakeUpPin, watchdogISR, RISING);                                         // The watchdog timer will signal us and we have to respond
-
 
   char StartupMessage[64] = "Startup Successful";                                           // Messages from Initialization
   state = IDLE_STATE;
@@ -233,9 +239,9 @@ void setup()                                                                    
   Particle.function("Humidity-Lower-Limit",setLowerHumidityLimit);
   Particle.function("Humidty-upper-Limit",setUpperHumidityLimit);
 
+
   Particle.publish("Time",Time.timeStr(Time.now()), PRIVATE);
 
-  
   if (! sht31.begin(0x44)) {                                                                      // Start the BME680 Sensor
     resetTimeStamp = millis();
     snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");
@@ -246,7 +252,7 @@ void setup()                                                                    
 
   takeMeasurements();                                                                      // For the benefit of monitoring the device
   updateThresholdValue();                                                                  // For checking values of each device
-  
+
 
   if(verboseMode) Particle.publish("Startup",StartupMessage,PRIVATE);                      // Let Particle know how the startup process went
 }
@@ -258,12 +264,13 @@ void loop()
   {
     
     if (verboseMode && state != oldState) publishStateTransition();
-   
+
     
     if (Time.hour() != currentHourlyPeriod || (!(Time.now() % wakeBoundary))) {
       state = MEASURING_STATE;                                                     
       }
   }
+
     break;
 
   case THRESHOLD_CROSSED:
@@ -354,7 +361,9 @@ void sendEvent()
   }          
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensor_data.temperatureInC, sensor_data.relativeHumidity,sensor_data.stateOfCharge);
   Particle.publish("storage-facility-hook", data, PRIVATE);
+
   Particle.publish("Time",Time.timeStr(Time.now()), PRIVATE);
+
   currentCountTime = Time.now();
   EEPROM.write(MEM_MAP::currentCountsTimeAddr, currentCountTime);
   currentHourlyPeriod = Time.hour();                                                        // Change the time period
@@ -381,11 +390,13 @@ void UbidotsHandler(const char *event, const char *data)                        
       
     }
     dataInFlight = false;    
+
   }
   else if (verboseMode) {
     waitUntil(meterParticlePublish);      
     Particle.publish("Ubidots Hook", data, PRIVATE);                              // Publish the response code
   }
+
 
 }
 
@@ -444,8 +455,8 @@ bool takeMeasurements() {
 
     // If lower temperature threshold is crossed, Set the flag true. 
     if (relativeHumidity > sensor_data.upperHumidityThreshold) upperHumidityThresholdCrossed = true;
+getBatteryContext();                   // Check what the battery is doing.
 
-     getBatteryContext();                   // Check what the battery is doing.
 
     // Indicate that this is a valid data array and store it
     sensor_data.validData = true;
@@ -469,6 +480,7 @@ bool ThresholdCrossed(){
   if ((lowerTemperatureThresholdCrossed || upperTemperatureThresholdCrossed)!=0){                               // If lower or upper threshold conditions are True. 
     char data[32];
     snprintf(data,sizeof(data),"{\"alert-temperature\":%4.1f}",temperatureInC);
+
     // snprintf(smsString,sizeof(smsString),"ALERT FROM KumvaIoT: Temperature Threshold Crossed. Current Temperature is: %4.1f",temperatureInC);
     // Particle.publish("sms-webhook",smsString,PRIVATE);                                            // Send the webhook . 
     waitUntil(meterParticlePublish);
