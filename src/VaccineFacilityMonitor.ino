@@ -21,7 +21,6 @@
 // v1.10 - Changed reporting time to 5 minutes from 30. 
 // v2.00 - Changed reporting time to 15 minutes and added battery support.
 // v3.00 - Changed payload size to 100 bytes from 256 and turned verbose mode off. 
-
 // v4.00 - Added product ID version as variable.
 // v6.00 - Testing the sampling period fix.
 // v7.00 - Set the sampling period to 20 mins.
