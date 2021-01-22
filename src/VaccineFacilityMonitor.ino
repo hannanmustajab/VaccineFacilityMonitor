@@ -31,6 +31,9 @@
 // v11.02 - Added a timer to keep the connection alive added clock support as well
 // v11.03 - Initial testing complete - removing comments on keepAlive for testing
 // v12.00 - Pushed to repo - moving to Particle for dissemination
+// v12.01 - Minor messaging updates
+// v13.00 - Fixed threshold settings in default
+// V14.00 - Still tweaking alerts and LED flashing - found the bug 
 
 
 /* 
@@ -41,8 +44,8 @@
 
 
 PRODUCT_ID(12401);
-PRODUCT_VERSION(12); 
-const char releaseNumber[8] = "12.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(14); 
+const char releaseNumber[8] = "14.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
@@ -74,7 +77,7 @@ struct alertsStatus_structure {
   bool lowerTemperatureThresholdCrossed;                                                    // Set this to true if the lower temp threshold is crossed
   bool upperHumidityThresholdCrossed;                                                       // Set this to true if the upper humidty threshold is crossed
   bool lowerHumidityThresholdCrossed;                                                       // Set this to true if the lower humidty threshold is crossed
-  bool thresholdCrossAcknowledged;                                                          // Once  sms is sent, Put all the variables to false again. 
+  bool thresholdCrossedFlag;                                                                // If any of the thresholds have been crossed
   float upperTemperatureThreshold;                                                          // Values set below that trigger alerts
   float lowerTemperatureThreshold;
   float upperHumidityThreshold;
@@ -84,8 +87,8 @@ struct alertsStatus_structure {
 struct sensor_data_struct {                                                               // Here we define the structure for collecting and storing data from the sensors
   bool validData;
   unsigned long timeStamp;
-  double temperatureInC;
-  double relativeHumidity; 
+  float temperatureInC;
+  float relativeHumidity; 
   int stateOfCharge;
 } sensorData;
 
@@ -128,7 +131,6 @@ const unsigned long resetWait   = 300000;                                       
 unsigned long webhookTimeStamp  = 0;                                                        // Webhooks...
 unsigned long resetTimeStamp    = 0;                                                        // Resets - this keeps you from falling into a reset loop
 bool dataInFlight = false;
-bool flashTheLED = false;                                                                   // Flag that will flash the LED if any thresholds are crossed
 
 // Variables Related To Particle Mobile Application Reporting
 // Simplifies reading values in the Particle Mobile Application
@@ -250,12 +252,12 @@ void loop()
   case MEASURING_STATE:                                                                     // Take measurements prior to sending
     if (sysStatus.verboseMode && state != oldState) publishStateTransition();
 
-    if (takeMeasurements()) flashTheLED = true;
-
+    if (takeMeasurements()) alertsStatus.thresholdCrossedFlag = true;                       // A return of a "true" value indicates that one of the thresholds have been crossed
     else {
-      flashTheLED = false;
+      alertsStatus.thresholdCrossedFlag = false;
       digitalWrite(blueLED,LOW);                                                            // Just in case it was on an on-flash
     }
+    alertsStatusWriteNeeded = true;
 
     state = REPORTING_STATE;
     break;
@@ -304,7 +306,7 @@ void loop()
 
   if (watchdogFlag) petWatchdog();                                                          // Watchdog flag is raised - time to pet the watchdog
 
-  if (flashTheLED) blinkLED(blueLED);
+  if (alertsStatus.thresholdCrossedFlag) blinkLED(blueLED);
 
   if (sysStatusWriteNeeded) {
     fram.put(FRAM::sysStatusAddr,sysStatus);
@@ -322,26 +324,26 @@ void loop()
 }
 
 
-void loadSystemDefaults() {                                         // Default settings for the device - connected, not-low power and always on
+void loadSystemDefaults() {                                                                 // Default settings for the device - connected, not-low power and always on
   if (Particle.connected()) publishQueue.publish("Mode","Loading System Defaults", PRIVATE);
   sysStatus.thirdPartySim = 0;
   sysStatus.keepAlive = 600;
   sysStatus.structuresVersion = 1;
   sysStatus.verboseMode = false;
   sysStatus.lowBatteryMode = false;
-  fram.put(FRAM::sysStatusAddr,sysStatus);                       // Write it now since this is a big deal and I don't want values over written
+  fram.put(FRAM::sysStatusAddr,sysStatus);                                                  // Write it now since this is a big deal and I don't want values over written
 }
 
-void loadAlertDefaults() {                                         // Default settings for the device - connected, not-low power and always on
+void loadAlertDefaults() {                                                                  // Default settings for the device - connected, not-low power and always on
   if (Particle.connected()) publishQueue.publish("Mode","Loading Alert Defaults", PRIVATE);
   alertsStatus.upperTemperatureThreshold = 30;
   alertsStatus.lowerTemperatureThreshold = 2;
   alertsStatus.upperHumidityThreshold = 90;
   alertsStatus.lowerHumidityThreshold= 5;
-  fram.put(FRAM::alertStatusAddr,alertsStatus);                       // Write it now since this is a big deal and I don't want values over written
+  fram.put(FRAM::alertStatusAddr,alertsStatus);                                             // Write it now since this is a big deal and I don't want values over written
 }
 
-void checkSystemValues() {                                          // Checks to ensure that all system values are in reasonable range 
+void checkSystemValues() {                                                                  // Checks to ensure that all system values are in reasonable range 
   if (sysStatus.connectedStatus < 0 || sysStatus.connectedStatus > 1) {
     if (Particle.connected()) sysStatus.connectedStatus = true;
     else sysStatus.connectedStatus = false;
@@ -353,11 +355,11 @@ void checkSystemValues() {                                          // Checks to
   sysStatusWriteNeeded = true;
 }
 
-void checkAlertsValues() {                                          // Checks to ensure that all system values are in reasonable range 
-  if (alertsStatus.lowerTemperatureThreshold < 0 || alertsStatus.lowerTemperatureThreshold > 20) alertsStatus.lowerTemperatureThreshold = 3;
-  if (alertsStatus.upperTemperatureThreshold < 20 || alertsStatus.lowerTemperatureThreshold > 60) alertsStatus.lowerTemperatureThreshold = 30;
-  if (alertsStatus.lowerHumidityThreshold < 0 || alertsStatus.lowerHumidityThreshold > 20) alertsStatus.lowerHumidityThreshold = 13;
-  if (alertsStatus.upperHumidityThreshold < 20 || alertsStatus.upperHumidityThreshold > 90) alertsStatus.upperHumidityThreshold = 30;
+void checkAlertsValues() {                                                                  // Checks to ensure that all system values are in reasonable range 
+  if (alertsStatus.lowerTemperatureThreshold < 0.0  || alertsStatus.lowerTemperatureThreshold > 20.0) alertsStatus.lowerTemperatureThreshold = 3.0;
+  if (alertsStatus.upperTemperatureThreshold < 20.0 || alertsStatus.upperTemperatureThreshold > 90.0) alertsStatus.upperTemperatureThreshold = 33.0;
+  if (alertsStatus.lowerHumidityThreshold < 0.0     || alertsStatus.lowerHumidityThreshold > 50.0)    alertsStatus.lowerHumidityThreshold = 13.0;
+  if (alertsStatus.upperHumidityThreshold < 20.0    || alertsStatus.upperHumidityThreshold > 90.0)    alertsStatus.upperHumidityThreshold = 63.0;
   alertsStatusWriteNeeded = true;
 }
 
@@ -368,7 +370,7 @@ void watchdogISR()
 
 void petWatchdog()
 {
-  digitalWrite(donePin, HIGH);                                        // Pet the watchdog
+  digitalWrite(donePin, HIGH);                                                              // Pet the watchdog
   digitalWrite(donePin, LOW);
   watchdogFlag = false;
 }
@@ -403,8 +405,8 @@ void UbidotsHandler(const char *event, const char *data)                        
     }
     alertsStatus.upperHumidityThresholdCrossed = false;
     alertsStatus.lowerHumidityThresholdCrossed = false;
-    alertsStatus.upperTemperatureThreshold     = false;
-    alertsStatus.lowerHumidityThresholdCrossed = false;
+    alertsStatus.upperTemperatureThresholdCrossed = false;
+    alertsStatus.lowerTemperatureThresholdCrossed = false;
     alertsStatusWriteNeeded = true;
     dataInFlight = false;    
 
@@ -419,8 +421,8 @@ void UbidotsHandler(const char *event, const char *data)                        
 // These are the functions that are part of the takeMeasurements call
 
 bool takeMeasurements() {
+  char thresholdMessage[64] = "All within thresholds";
   bool haveAnyAlertsBeenSet = false;
-
   sensorData.validData = false;
 
   if (sht31.readTemperature()){
@@ -436,29 +438,33 @@ bool takeMeasurements() {
     // If lower temperature threshold is crossed, Set the flag true. 
     if (sensorData.temperatureInC < alertsStatus.lowerTemperatureThreshold) {
       alertsStatus.lowerTemperatureThresholdCrossed = true;
+      snprintf(thresholdMessage, sizeof(thresholdMessage), "Low Temp Alert %4.2f < %4.2f", sensorData.temperatureInC, alertsStatus.lowerTemperatureThreshold);
       haveAnyAlertsBeenSet = true;
     }
 
     // If upper temperature threshold is crossed, Set the flag true. 
     if (sensorData.temperatureInC > alertsStatus.upperTemperatureThreshold) {
       alertsStatus.upperTemperatureThresholdCrossed = true;
+      snprintf(thresholdMessage, sizeof(thresholdMessage), "High Temp Alert %4.2f > %4.2f", sensorData.temperatureInC, alertsStatus.upperTemperatureThreshold);
       haveAnyAlertsBeenSet = true;
     }
 
-    // If lower temperature threshold is crossed, Set the flag true. 
+    // If lower humidity threshold is crossed, Set the flag true. 
     if (sensorData.relativeHumidity < alertsStatus.lowerHumidityThreshold) {
       alertsStatus.lowerHumidityThresholdCrossed = true;
+      snprintf(thresholdMessage, sizeof(thresholdMessage), "Low Humidity Alert %4.2f < %4.2f", sensorData.relativeHumidity, alertsStatus.lowerHumidityThreshold);
       haveAnyAlertsBeenSet = true;
     }
 
-    // If lower temperature threshold is crossed, Set the flag true. 
+    // If upper humidity threshold is crossed, Set the flag true. 
     if (sensorData.relativeHumidity > alertsStatus.upperHumidityThreshold) {
       alertsStatus.upperHumidityThresholdCrossed = true;
+      snprintf(thresholdMessage, sizeof(thresholdMessage), "High Humidity Alert %4.2f < %4.2f", sensorData.relativeHumidity, alertsStatus.upperHumidityThreshold);
       haveAnyAlertsBeenSet = true;
     }
   }
 
-    getBatteryContext();                   // Check what the battery is doing.
+    getBatteryContext();                                                                    // Check what the battery is doing.
 
     // Indicate that this is a valid data array and store it
     sensorData.validData = true;
@@ -466,11 +472,13 @@ bool takeMeasurements() {
     sensorDataWriteNeeded = true;
     alertsStatusWriteNeeded = true;  
 
+    if (haveAnyAlertsBeenSet) publishQueue.publish("Alerts", thresholdMessage,PRIVATE);
+
     return haveAnyAlertsBeenSet;
 }
 
 // Function to Blink the LED for alerting. 
-void blinkLED(int LED)                                            // Non-blocking LED flashing routine
+void blinkLED(int LED)                                                                      // Non-blocking LED flashing routine
 {
   const int flashingFrequency = 1000;
   static unsigned long lastStateChange = 0;
@@ -528,7 +536,7 @@ void publishStateTransition(void)
 int setUpperTempLimit(String value)
 {
   alertsStatus.upperTemperatureThreshold = value.toFloat();
-  publishQueue.publish("Upper Threshold Set",String(value),PRIVATE);
+  publishQueue.publish("Upper Temperature Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
   return 1;
 }
@@ -536,7 +544,7 @@ int setUpperTempLimit(String value)
 int setLowerTempLimit(String value)
 {
   alertsStatus.lowerTemperatureThreshold = value.toFloat();
-  publishQueue.publish("Lower Threshold Set",String(value),PRIVATE);
+  publishQueue.publish("Lower Temperature Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
   return 1;
 
@@ -545,7 +553,7 @@ int setLowerTempLimit(String value)
 int setUpperHumidityLimit(String value)
 {
   alertsStatus.upperHumidityThreshold = value.toFloat();
-  publishQueue.publish("Upper Threshold Set",String(value),PRIVATE);
+  publishQueue.publish("Upper Humidity Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
   return 1;
 }
@@ -553,7 +561,7 @@ int setUpperHumidityLimit(String value)
 int setLowerHumidityLimit(String value)
 {
   alertsStatus.lowerHumidityThreshold = value.toFloat();
-  publishQueue.publish("Lower Threshold Set",String(value),PRIVATE);
+  publishQueue.publish("Lower Humidity Threshold Set",String(value),PRIVATE);
   updateThresholdValue();
   return 1;
 }
