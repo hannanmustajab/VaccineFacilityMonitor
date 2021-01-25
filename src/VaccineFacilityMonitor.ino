@@ -46,8 +46,8 @@
 
 
 PRODUCT_ID(12401);
-PRODUCT_VERSION(15); 
-const char releaseNumber[8] = "15.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(16); 
+const char releaseNumber[8] = "16.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope

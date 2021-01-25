@@ -41,6 +41,7 @@
 // v13.00 - Fixed threshold settings in default
 // V14.00 - Still tweaking alerts and LED flashing - found the bug 
 // v15.00 - Updated to set better defaults for new devices
+// v16.00 - Added publish code on the watchdog if in verbose mode and a couple minor tweaks
 
 
 /* 
@@ -74,10 +75,10 @@ int setThirdPartySim(String command);
 int setKeepAlive(String command);
 void updateThresholdValue();
 void getBatteryContext();
-#line 47 "/Users/chipmc/Documents/Maker/Particle/Projects/IDD_Cold-Chain/src/VaccineFacilityMonitor.ino"
+#line 48 "/Users/chipmc/Documents/Maker/Particle/Projects/IDD_Cold-Chain/src/VaccineFacilityMonitor.ino"
 PRODUCT_ID(12401);
-PRODUCT_VERSION(15); 
-const char releaseNumber[8] = "15.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(16); 
+const char releaseNumber[8] = "16.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope

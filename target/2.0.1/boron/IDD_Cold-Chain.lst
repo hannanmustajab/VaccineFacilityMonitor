@@ -31,11 +31,11 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING
  13 .debug_macro  0003cdaf  00000000  00000000  0021647e  2**0
                   CONTENTS, READONLY, DEBUGGING
- 14 .debug_line   000425fc  00000000  00000000  0025322d  2**0
+ 14 .debug_line   000425f9  00000000  00000000  0025322d  2**0
                   CONTENTS, READONLY, DEBUGGING
- 15 .debug_str    0011240d  00000000  00000000  00295829  2**0
+ 15 .debug_str    0011240d  00000000  00000000  00295826  2**0
                   CONTENTS, READONLY, DEBUGGING
- 16 .debug_frame  00008978  00000000  00000000  003a7c38  2**2
+ 16 .debug_frame  00008978  00000000  00000000  003a7c34  2**2
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -2534,7 +2534,7 @@ struct __ApplicationProductVersion {
    d525c:	f002 ff24 	bl	d80a8 <spark_protocol_instance>
    d5260:	2300      	movs	r3, #0
    d5262:	461a      	mov	r2, r3
-   d5264:	210f      	movs	r1, #15
+   d5264:	2110      	movs	r1, #16
    d5266:	f002 ff2f 	bl	d80c8 <spark_protocol_set_product_firmware_version>
    d526a:	2500      	movs	r5, #0
     SleepResult() {}
@@ -15271,7 +15271,7 @@ TwoWire& __fetch_global_Wire()
 	...
 
 000db0a8 <_ZL13releaseNumber>:
-   db0a8:	3531 302e 0030 0000                         15.00...
+   db0a8:	3631 302e 0030 0000                         16.00...
 
 000db0b0 <_ZL17FRAMversionNumber>:
    db0b0:	0005 0000 7277 7469 4465 7461 2061 6166     ....writeData fa
