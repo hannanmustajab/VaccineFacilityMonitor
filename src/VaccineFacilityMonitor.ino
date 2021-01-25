@@ -34,6 +34,7 @@
 // v12.01 - Minor messaging updates
 // v13.00 - Fixed threshold settings in default
 // V14.00 - Still tweaking alerts and LED flashing - found the bug 
+// v15.00 - Updated to set better defaults for new devices
 
 
 /* 
@@ -44,8 +45,8 @@
 
 
 PRODUCT_ID(12401);
-PRODUCT_VERSION(14); 
-const char releaseNumber[8] = "14.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(15); 
+const char releaseNumber[8] = "15.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
@@ -57,7 +58,7 @@ namespace FRAM {                                                                
    };
 };
 
-const int FRAMversionNumber = 4;                                                            // Increment this number each time the memory map is changed
+const int FRAMversionNumber = 5;                                                            // Increment this number each time the memory map is changed
 
 struct systemStatus_structure {                     
   uint8_t structuresVersion;                                                                // Version of the data structures (system and data)
@@ -326,8 +327,8 @@ void loop()
 
 void loadSystemDefaults() {                                                                 // Default settings for the device - connected, not-low power and always on
   if (Particle.connected()) publishQueue.publish("Mode","Loading System Defaults", PRIVATE);
-  sysStatus.thirdPartySim = 0;
-  sysStatus.keepAlive = 600;
+  sysStatus.thirdPartySim = 1;
+  sysStatus.keepAlive = 120;
   sysStatus.structuresVersion = 1;
   sysStatus.verboseMode = false;
   sysStatus.lowBatteryMode = false;
@@ -595,10 +596,10 @@ int setKeepAlive(String command)
   int tempTime = strtol(command,&pEND,10);                                                  // Looks for the first integer and interprets it
   if ((tempTime < 0) || (tempTime > 1200)) return 0;                                        // Make sure it falls in a valid range or send a "fail" result
   sysStatus.keepAlive = tempTime;
-  if (Particle.connected()) {
-    snprintf(data, sizeof(data), "Keep Alive set to %i sec",sysStatus.keepAlive);
-    publishQueue.publish("Keep Alive",data, PRIVATE);
-  }
+  Particle.keepAlive(sysStatus.keepAlive);                                                // Set the keep alive value
+  keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+  snprintf(data, sizeof(data), "Keep Alive set to %i sec",sysStatus.keepAlive);
+  publishQueue.publish("Keep Alive",data, PRIVATE);
   sysStatusWriteNeeded = true;                                                           // Need to store to FRAM back in the main loop
   return 1;
 }
