@@ -181,7 +181,6 @@ bool sensorDataWriteNeeded = false;
 
 // Time Period Related Variables
 const int wakeBoundary = 0*3600 + 20*60 + 0;                                                // 0 hour 20 minutes 0 seconds
-const int keepAliveBoundary = 0*3600 + 5*60 +0;                                             // How often do we need to send a ping to keep the connection alive - start with 5 minutes - *** related to keepAlive value in Setup()! ***
 
 void setup()                                                                                // Note: Disconnected Setup()
 {
@@ -258,7 +257,7 @@ void setup()                                                                    
   checkAlertsValues();                                                                      // Make sure that Alerts values are all in a valid range
 
   if (sysStatus.thirdPartySim) {
-    waitUntil(Particle.connected); 
+    waitFor(Particle.connected,30 * 1000); 
     Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
     keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
   }
@@ -405,6 +404,7 @@ void petWatchdog()
   digitalWrite(donePin, HIGH);                                                              // Pet the watchdog
   digitalWrite(donePin, LOW);
   watchdogFlag = false;
+  if (Particle.connected && sysStatus.verboseMode) publishQueue.publish("Watchdog","Petted",PRIVATE);
 }
 
 void keepAliveMessage() {
