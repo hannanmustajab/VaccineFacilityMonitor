@@ -36,18 +36,13 @@
 // V14.00 - Still tweaking alerts and LED flashing - found the bug 
 // v15.00 - Updated to set better defaults for new devices
 // v16.00 - Added publish code on the watchdog if in verbose mode and a couple minor tweaks
+// v17.00 - Changed webhook name for stealth partner and moved to deviceOS@4.0.0 (Product version 17)
+// v18.00 - Changed the sampling to 5 minutes.
+// v19.00 - Changed to deviceOS@5.3.1 for KiPharma Devices.  (Product version 18)
+// v20.00 - Removed the keepAlive message, as it was using too much data operations.
 
-
-/* 
-  Todo : 
-    Add alerting to EEPROM
-*/
-
-
-
-PRODUCT_ID(12401);
-PRODUCT_VERSION(16); 
-const char releaseNumber[8] = "16.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(18); 
+const char releaseNumber[8] = "20.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
 namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
@@ -111,7 +106,7 @@ MB85RC64 fram(Wire, 0);                                                         
 MCP79410 rtc;                                                                               // Rickkas MCP79410 libarary
 retained uint8_t publishQueueRetainedBuffer[2048];                                          // Create a buffer in FRAM for cached publishes
 PublishQueueAsync publishQueue(publishQueueRetainedBuffer, sizeof(publishQueueRetainedBuffer));
-Timer keepAliveTimer(1000, keepAliveMessage);
+// Timer keepAliveTimer(1000, keepAliveMessage);
 
 // State Machine Variables
 enum State { INITIALIZATION_STATE, ERROR_STATE, IDLE_STATE, MEASURING_STATE, REPORTING_STATE, RESP_WAIT_STATE};
@@ -229,7 +224,7 @@ void setup()                                                                    
   if (sysStatus.thirdPartySim) {
     waitFor(Particle.connected,30 * 1000); 
     Particle.keepAlive(sysStatus.keepAlive);                                              // Set the keep alive value
-    keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+    // keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
   }
 
   takeMeasurements();                                                                       // For the benefit of monitoring the device
@@ -377,9 +372,9 @@ void petWatchdog()
   if (Particle.connected && sysStatus.verboseMode) publishQueue.publish("Watchdog","Petted",PRIVATE);
 }
 
-void keepAliveMessage() {
-  Particle.publish("*", PRIVATE,NO_ACK);
-}
+// void keepAliveMessage() {
+//   Particle.publish("*", PRIVATE,NO_ACK);
+// }
 
 void sendEvent()
 {
@@ -574,7 +569,7 @@ int setThirdPartySim(String command) // Function to force sending data in curren
   {
     sysStatus.thirdPartySim = true;
     Particle.keepAlive(sysStatus.keepAlive);                                                // Set the keep alive value
-    keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+    // keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
     if (Particle.connected()) publishQueue.publish("Mode","Set to 3rd Party Sim", PRIVATE);
     sysStatusWriteNeeded = true;
     return 1;
@@ -598,7 +593,7 @@ int setKeepAlive(String command)
   if ((tempTime < 0) || (tempTime > 1200)) return 0;                                        // Make sure it falls in a valid range or send a "fail" result
   sysStatus.keepAlive = tempTime;
   Particle.keepAlive(sysStatus.keepAlive);                                                // Set the keep alive value
-  keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
+  // keepAliveTimer.changePeriod(sysStatus.keepAlive*1000);                                  // Will start the repeating timer
   snprintf(data, sizeof(data), "Keep Alive set to %i sec",sysStatus.keepAlive);
   publishQueue.publish("Keep Alive",data, PRIVATE);
   sysStatusWriteNeeded = true;                                                           // Need to store to FRAM back in the main loop

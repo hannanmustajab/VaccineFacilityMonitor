@@ -1,11 +1,5 @@
 {
-    "extensions.ignoreRecommendations": true,
-    "C_Cpp.default.configurationProvider": "particle.particle-vscode-core",
-    "cortex-debug.openocdPath": "${command:particle.getDebuggerOpenocdPath}",
-    "files.associations": {
-        "*.ino": "cpp"
-    },
     "particle.targetPlatform": "boron",
-    "particle.targetDevice": "Rwanda-Dev-002",
-    "particle.firmwareVersion": "2.0.1"
+    "particle.targetDevice": "KUMVA003",
+    "particle.firmwareVersion": "5.3.0"
 }
