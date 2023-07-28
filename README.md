@@ -1,35 +1,71 @@
-# VaccineFacilityMonitor
+# Temperature And Humidity Sensor for Cold Chain Products - Cellular Connected Data Logger
 
-A Particle project named VaccineFacilityMonitor
+![Project Banner](project_banner.png)
 
-## Welcome to your project!
+## Description
 
-Every new Particle project is composed of 3 important elements that you'll see have been created in your project directory for VaccineFacilityMonitor.
+This project is an Internet of Things (IoT) based solution for monitoring temperature and humidity in cold chain products using Particle Boron Devices and a Carrier Board built by Chip McClellend. The data logger is designed to collect temperature and humidity data from the SHT31x sensor and transmit it over a cellular connection. 
 
-#### ```/src``` folder:  
-This is the source folder that contains the firmware files for your project. It should *not* be renamed. 
-Anything that is in this folder when you compile your project will be sent to our compile service and compiled into a firmware binary for the Particle device that you have targeted.
+Additionally, it also reports the battery level of the device. The project enables remote monitoring of cold chain products to ensure they are stored within specified temperature and humidity ranges, critical for preserving product quality and safety during transportation and storage.
 
-If your application contains multiple files, they should all be included in the `src` folder. If your firmware depends on Particle libraries, those dependencies are specified in the `project.properties` file referenced below.
+## Author
+**Chip McClelland**
+- Email: chip@seeinsights.com
 
-#### ```.ino``` file:
-This file is the firmware that will run as the primary application on your Particle device. It contains a `setup()` and `loop()` function, and can be written in Wiring or C/C++. For more information about using the Particle firmware API to create firmware for your Particle device, refer to the [Firmware Reference](https://docs.particle.io/reference/firmware/) section of the Particle documentation.
 
-#### ```project.properties``` file:  
-This is the file that specifies the name and version number of the libraries that your project depends on. Dependencies are added automatically to your `project.properties` file when you add a library to a project using the `particle library add` command in the CLI or add a library in the Desktop IDE.
+**Abdul Hannan Mustajab**
+- Email: hannan@kumva.io
 
-## Adding additional files to your project
 
-#### Projects with multiple sources
-If you would like add additional files to your application, they should be added to the `/src` folder. All files in the `/src` folder will be sent to the Particle Cloud to produce a compiled binary.
 
-#### Projects with external libraries
-If your project includes a library that has not been registered in the Particle libraries system, you should create a new folder named `/lib/<libraryname>/src` under `/<project dir>` and add the `.h`, `.cpp` & `library.properties` files for your library there. Read the [Firmware Libraries guide](https://docs.particle.io/guide/tools-and-features/libraries/) for more details on how to develop libraries. Note that all contents of the `/lib` folder and subfolders will also be sent to the Cloud for compilation.
 
-## Compiling your project
+## Date
 
-When you're ready to compile your project, make sure you have the correct Particle device target selected and run `particle compile <platform>` in the CLI or click the Compile button in the Desktop IDE. The following files in your project folder will be sent to the compile service:
+- Original Project Date: 16 April 2020
+- Latest Revision Date: 27th July 2023
 
-- Everything in the `/src` folder, including your `.ino` application file
-- The `project.properties` file for your project
-- Any libraries stored under `lib/<libraryname>/src`
+## Features
+
+- Cellular connectivity for remote data transmission.
+- Temperature and humidity sensing using the SHT31x sensor.
+- Real-Time Clock (RTC) functionality with MCP79410RK library for accurate timestamping.
+- Non-volatile memory for data storage using the MB85RC256V-FRAM-RK library.
+- 20 Minutes reporting frequency.
+- Use of third party sim. (Make sure to keep the KeepAlive value to 120).
+- Particle functions for remote control:
+  - **Measure Now:** Trigger an immediate temperature and humidity measurement.
+  - **Verbose Mode:** Toggle verbose logging for detailed information (Should be used only for debugging). 
+  - **KeepAlive:** Maintain the device connection with the Particle cloud. 
+  - **Third Party Sim:** Support for using third-party SIM cards for cellular connectivity.
+
+## Hardware Requirements
+
+- Particle Boron Device: Used for cellular connectivity and remote management.
+- Carrier Board (by Chip McClellend): Provides the necessary interfaces for the sensors and FRAM module.
+- SHT31x Sensor: Measures temperature and humidity.
+- Power Supply/Battery: Provides power to the data logger.
+
+## Libraries Used
+
+1. **Adafruit-sht31:** Library to interface with the SHT31x sensor and obtain temperature and humidity readings.
+2. **PublishQueueAsyncRK:** Library for queuing messages and efficiently transmitting data over the cellular connection.
+3. **MCP79410RK:** Library for interacting with the MCP79410 Real-Time Clock module.
+4. **MB85RC256V-FRAM-RK:** Library for working with the MB85RC256V FRAM module to store data in non-volatile memory.
+
+## Particle Functions
+
+1. **Measure Now:**
+   Call this function remotely to trigger an immediate measurement of temperature and humidity using the SHT31x sensor. The data will be sent over the cellular connection.
+
+2. **Verbose Mode:**
+   Toggle this function to enable or disable verbose logging. When verbose mode is on, the data logger provides more detailed information in its logs.
+
+3. **KeepAlive:**
+   Use this function to maintain the device connection with the Particle cloud, preventing disconnection due to inactivity.
+
+4. **Third Party Sim:**
+   This function enables the use of third-party SIM cards for cellular connectivity, providing flexibility in choosing a suitable data plan.
+
+## Reporting Duration
+
+The data logger is programmed to report temperature, humidity, and battery level data every 20 minutes. This duration can be adjusted as needed to meet specific monitoring requirements.
