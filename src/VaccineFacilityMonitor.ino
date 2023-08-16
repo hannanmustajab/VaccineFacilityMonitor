@@ -379,7 +379,7 @@ void sendEvent()
 {
   char data[100];                 
   snprintf(data, sizeof(data), "{\"Temperature\":%4.1f, \"Humidity\":%4.1f,\"Battery\":%i}", sensorData.temperatureInC, sensorData.relativeHumidity,sensorData.stateOfCharge);
-  publishQueue.publish("storage-facility-hook", data, PRIVATE);
+  publishQueue.publish("storage-facility-hook-stealth", data, PRIVATE);
   dataInFlight = true;                                                                      // set the data inflight flag
   webhookTimeStamp = millis();
 }
