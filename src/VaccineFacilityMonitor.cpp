@@ -72,10 +72,10 @@ void updateThresholdValue();
 void getBatteryContext();
 #line 44 "/Users/abdulhannanmustajab/Desktop/IoT/Particle/VaccineFacilityMonitor/VaccineFacilityMonitor/src/VaccineFacilityMonitor.ino"
 PRODUCT_VERSION(18); 
-const char releaseNumber[8] = "19.00";                                                      // Displays the release on the menu
+const char releaseNumber[8] = "20.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
-namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
+namespace FRAM {                                                                         // MPoved to namespace instead of #define to limit scope
   enum Addresses {
     versionAddr           = 0x00,                                                           // Where we store the memory map version number - 8 Bits
     sysStatusAddr         = 0x01,                                                           // This is the status of the device
@@ -218,9 +218,6 @@ void setup()                                                                    
 
   rtc.setup();                                                        // Start the real time clock
   rtc.clearAlarm();                                                   // Ensures alarm is still not set from last cycle
-
-  publishQueue.publish("Time",Time.timeStr(Time.now()), PRIVATE);
-
 
   if (!sht31.begin(0x44)) {                                                                 // Start the i2c connected SHT-31 sensor
     snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");

@@ -1,10 +1,11 @@
 /*
-* Project : Temperature And Humidity Sensor for Vaccine Facility. 
+* Project : Temperature And Humidity Sensor for Cold Chain Products.
 * Description: Cellular Connected Data Logger.
 * Author: Abdul Hannan Mustajab
 
 * Sponsor: Thom Harvey ID&D
 * Date: 16 April 2020
+* Revision: 27th July 2023.
 */
 
 // v0.10 - Initial Release - BME680 functionality
@@ -40,12 +41,13 @@
 // v18.00 - Changed the sampling to 5 minutes.
 // v19.00 - Changed to deviceOS@5.3.1 for KiPharma Devices.  (Product version 18)
 // v20.00 - Removed the keepAlive message, as it was using too much data operations.
+// v21.00 - Same version as 20, only the webhook name is changed to stealth. Use this for SVH Devices. (Product Version 19)
 
-PRODUCT_VERSION(18); 
-const char releaseNumber[8] = "20.00";                                                      // Displays the release on the menu
+PRODUCT_VERSION(19); 
+const char releaseNumber[8] = "21.00";                                                      // Displays the release on the menu
 
 // Define the memory map - note can be EEPROM or FRAM - moving to FRAM for speed and to avoid memory wear
-namespace FRAM {                                                                         // Moved to namespace instead of #define to limit scope
+namespace FRAM {                                                                         // MPoved to namespace instead of #define to limit scope
   enum Addresses {
     versionAddr           = 0x00,                                                           // Where we store the memory map version number - 8 Bits
     sysStatusAddr         = 0x01,                                                           // This is the status of the device
@@ -188,9 +190,6 @@ void setup()                                                                    
 
   rtc.setup();                                                        // Start the real time clock
   rtc.clearAlarm();                                                   // Ensures alarm is still not set from last cycle
-
-  publishQueue.publish("Time",Time.timeStr(Time.now()), PRIVATE);
-
 
   if (!sht31.begin(0x44)) {                                                                 // Start the i2c connected SHT-31 sensor
     snprintf(StartupMessage,sizeof(StartupMessage),"Error - SHT31 Initialization");
